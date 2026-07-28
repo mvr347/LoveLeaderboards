@@ -1,0 +1,26 @@
+name: LoveLeaderboards
+version: '1.0.0-SNAPSHOT'
+main: dev.lovelace.loveleaderboards.LoveLeaderboards
+api-version: '1.21'
+authors: [ "Antigravity" ]
+description: Advanced leaderboards plugin for Love ecosystem.
+
+softdepend: [ PlaceholderAPI, LoveHunt, LoveClans ]
+
+commands:
+  leaderboard:
+    description: Open the main leaderboard GUI
+    aliases: [ lb, top ]
+    permission: loveleaderboards.use
+  leaderboardadmin:
+    description: Admin commands for LoveLeaderboards
+    aliases: [ lba, lbadmin ]
+    permission: loveleaderboards.admin
+
+permissions:
+  loveleaderboards.use:
+    description: Allows using basic leaderboard commands
+    default: true
+  loveleaderboards.admin:
+    description: Allows using admin commands
+    default: op
