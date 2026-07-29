@@ -4,6 +4,7 @@ import dev.lovelace.loveleaderboards.commands.LeaderboardAdminCommand;
 import dev.lovelace.loveleaderboards.commands.LeaderboardCommand;
 import dev.lovelace.loveleaderboards.integrations.LoveClansIntegration;
 import dev.lovelace.loveleaderboards.integrations.LoveHuntIntegration;
+import dev.lovelace.loveleaderboards.integrations.RatingSyncIntegration;
 import dev.lovelace.loveleaderboards.integrations.PlaceholderAPIIntegration;
 import dev.lovelace.loveleaderboards.listeners.GuiListener;
 import dev.lovelace.loveleaderboards.listeners.LeaderboardEventListener;
@@ -82,6 +83,12 @@ public class LoveLeaderboards extends JavaPlugin {
         if (getConfig().getBoolean("integrations.love-clans.enabled", true)) {
             loveClansIntegration = new LoveClansIntegration(this);
             loveClansIntegration.startSyncTask();
+        }
+
+        // Рейтинг охотника и навык пивовара — накопленное состояние, а не событие,
+        // поэтому их вычитываем периодически целиком.
+        if (getConfig().getBoolean("integrations.rating-sync.enabled", true)) {
+            new RatingSyncIntegration(this).startSyncTask();
         }
 
         // 7. Monthly Reset Task

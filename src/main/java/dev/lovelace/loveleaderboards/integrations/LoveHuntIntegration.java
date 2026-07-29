@@ -20,12 +20,14 @@ public class LoveHuntIntegration implements Listener {
     public void register() {
         try {
             @SuppressWarnings("unchecked")
-            Class<? extends Event> eventClass = (Class<? extends Event>) Class.forName("dev.lovelace.lovehunt.events.BountyCompletedEvent");
+            Class<? extends Event> eventClass = (Class<? extends Event>) Class.forName("me.lovelace.loveHunt.api.event.BountyClaimEvent");
             
             EventExecutor executor = (listener, event) -> {
                 if (!eventClass.isInstance(event)) return;
                 try {
-                    Method getHunter = eventClass.getMethod("getHunter");
+                    // В LoveHunt охотник у события называется killer, а не hunter — из-за старого
+                    // имени интеграция никогда не срабатывала.
+                    Method getHunter = eventClass.getMethod("getKiller");
                     Player hunter = (Player) getHunter.invoke(event);
                     
                     // We can also extract reward if needed:
@@ -45,15 +47,15 @@ public class LoveHuntIntegration implements Listener {
                         }
                     }
                 } catch (Exception e) {
-                    plugin.getLogger().warning("Failed to process BountyCompletedEvent: " + e.getMessage());
+                    plugin.getLogger().warning("Не удалось обработать BountyClaimEvent: " + e.getMessage());
                 }
             };
             
             Bukkit.getPluginManager().registerEvent(eventClass, this, EventPriority.NORMAL, executor, plugin);
-            plugin.getLogger().info("Successfully hooked into LoveHunt BountyCompletedEvent.");
+            plugin.getLogger().info("Подключились к LoveHunt: BountyClaimEvent.");
             
         } catch (ClassNotFoundException e) {
-            plugin.getLogger().warning("LoveHunt event class not found. Is LoveHunt installed and version correct?");
+            plugin.getLogger().info("LoveHunt не найден — топ по розыскам отключён.");
         }
     }
 }
