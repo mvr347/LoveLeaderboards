@@ -31,6 +31,30 @@ categories:
     time-period: 'alltime'  # Только всё время, не месячный топ
     integration: 'LoveClans'  # Автоматически синхронизируется каждый час
 
+  hunter-rating:
+    display-name: '&6🎯 Рейтинг охотника'
+    description: 'Репутация охотника за головами'
+    enabled: true
+    sort-order: 4
+    time-period: 'alltime'  # Рейтинг — текущее состояние, месячный срез для него бессмысленен
+    integration: 'LoveHuntRating'
+
+  best-brewer:
+    display-name: '&6🍺 Мастер пивоварения'
+    description: 'Уровень навыка пивовара'
+    enabled: true
+    sort-order: 5
+    time-period: 'alltime'
+    integration: 'LoveBrew'
+
+  clan-wealth:
+    display-name: '&6💰 Богатейший клан'
+    description: 'Содержимое клановой казны'
+    enabled: true
+    sort-order: 6
+    time-period: 'alltime'
+    integration: 'LoveClans'
+
 # ====== ИНТЕГРАЦИИ ======
 
 integrations:
@@ -42,6 +66,11 @@ integrations:
     enabled: true
     sync-interval: 3600  # секунды (1 час)
     # Получать мощь кланов и обновлять 'clan-power' категорию
+
+  # Периодическая вычитка накопленных значений: рейтинг охотника и навык пивовара
+  rating-sync:
+    enabled: true
+    sync-interval: 900  # секунды (15 минут)
 
   placeholder-api:
     enabled: true
