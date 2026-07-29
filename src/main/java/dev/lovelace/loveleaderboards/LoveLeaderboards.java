@@ -2,10 +2,8 @@ package dev.lovelace.loveleaderboards;
 
 import dev.lovelace.loveleaderboards.commands.LeaderboardAdminCommand;
 import dev.lovelace.loveleaderboards.commands.LeaderboardCommand;
-import dev.lovelace.loveleaderboards.integrations.LoveClansIntegration;
-import dev.lovelace.loveleaderboards.integrations.LoveHuntIntegration;
-import dev.lovelace.loveleaderboards.integrations.RatingSyncIntegration;
 import dev.lovelace.loveleaderboards.integrations.PlaceholderAPIIntegration;
+import dev.lovelace.loveleaderboards.integrations.StatBusIntegration;
 import dev.lovelace.loveleaderboards.listeners.GuiListener;
 import dev.lovelace.loveleaderboards.listeners.LeaderboardEventListener;
 import dev.lovelace.loveleaderboards.listeners.StandInteractListener;
@@ -27,7 +25,6 @@ public class LoveLeaderboards extends JavaPlugin {
     private LeaderboardManager leaderboardManager;
     private RewardsManager rewardsManager;
     private HallOfFameManager hallOfFameManager;
-    private LoveClansIntegration loveClansIntegration;
 
     @Override
     public void onEnable() {
@@ -76,19 +73,15 @@ public class LoveLeaderboards extends JavaPlugin {
             new PlaceholderAPIIntegration(this).register();
         }
 
-        if (getConfig().getBoolean("integrations.love-hunt.enabled", true)) {
-            new LoveHuntIntegration(this).register();
-        }
-
-        if (getConfig().getBoolean("integrations.love-clans.enabled", true)) {
-            loveClansIntegration = new LoveClansIntegration(this);
-            loveClansIntegration.startSyncTask();
-        }
-
-        // Рейтинг охотника и навык пивовара — накопленное состояние, а не событие,
-        // поэтому их вычитываем периодически целиком.
-        if (getConfig().getBoolean("integrations.rating-sync.enabled", true)) {
-            new RatingSyncIntegration(this).startSyncTask();
+        if (Bukkit.getPluginManager().getPlugin("LoveCore") != null) {
+            try {
+                Bukkit.getPluginManager().registerEvents(new StatBusIntegration(this), this);
+                getLogger().info("LoveCore integration: слушаем StatChangedEvent.");
+            } catch (Throwable t) {
+                getLogger().warning("Не удалось подключиться к LoveCore: " + t.getMessage());
+            }
+        } else {
+            getLogger().info("LoveCore не найден — топы по бонусам, рейтингу, пивоварению и кланам не будут обновляться.");
         }
 
         // 7. Monthly Reset Task
@@ -157,8 +150,22 @@ public class LoveLeaderboards extends JavaPlugin {
         return hallOfFameManager;
     }
 
-    public LoveClansIntegration getLoveClansIntegration() {
-        return loveClansIntegration;
+    /**
+     * Клан игрока, для отображения в GUI (шапка клановых топов). Раньше это было отдельным
+     * рефлективным вызовом в LoveClansIntegration — теперь просто читаем оракул ядра, который
+     * LoveClans реализует сам.
+     */
+    public String getPlayerClanName(java.util.UUID playerId) {
+        if (Bukkit.getPluginManager().getPlugin("LoveCore") == null) {
+            return null;
+        }
+        try {
+            return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.social.ProfileOracle.class)
+                    .flatMap(oracle -> oracle.clanName(playerId))
+                    .orElse(null);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 }
 
