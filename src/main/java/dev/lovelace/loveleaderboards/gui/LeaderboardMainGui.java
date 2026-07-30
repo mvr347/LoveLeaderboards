@@ -160,7 +160,7 @@ public class LeaderboardMainGui extends BaseGui {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 // Update Slot 0 (Viewer stats or clan stats)
                 if (isClan) {
-                    String clanName = plugin.getLoveClansIntegration() != null ? plugin.getLoveClansIntegration().getPlayerClanName(viewer.getUniqueId()) : null;
+                    String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
                     ItemBuilder headBuilder = new ItemBuilder(Material.PLAYER_HEAD)
                         .base64Head("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=")
                         .name("&eКланы: " + cat.displayName())
