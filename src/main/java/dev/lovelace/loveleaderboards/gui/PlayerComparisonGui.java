@@ -13,6 +13,7 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
+import java.util.List;
 import java.util.Optional;
 
 public class PlayerComparisonGui extends BaseGui {
@@ -36,8 +37,8 @@ public class PlayerComparisonGui extends BaseGui {
         this.plugin = plugin;
         this.viewer = viewer;
         this.target = target;
-        this.currentCategory = category;
-        this.currentPeriod = period;
+        this.currentCategory = category != null ? category : "kills";
+        this.currentPeriod = period != null ? period : TimePeriod.ALL_TIME;
 
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
         boolean isClan = catOpt.map(Category::isClanCategory).orElse(false);
@@ -46,64 +47,73 @@ public class PlayerComparisonGui extends BaseGui {
         String defaultTitle = isClan ? "&6⚔️ Сравнение кланов" : "&6⚔️ Сравнение игроков";
         String title = plugin.getConfig().getString(titleKey, defaultTitle);
         
-        this.inventory = Bukkit.createInventory(this, 27, TextUtil.parse(title));
+        this.inventory = Bukkit.createInventory(this, 54, TextUtil.parse(title));
         setup();
     }
 
     private void setup() {
-        // gui-gen-4: Header (0-8)
+        // gui-gen-4 Header (0-8)
         inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
-            .name("&e" + viewer.getName())
             .skullOwner(viewer.getUniqueId())
+            .name("&e" + viewer.getName())
+            .lore("", "&7Ваш профиль")
             .build());
+
         inventory.setItem(1, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(2, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(3, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        inventory.setItem(5, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        inventory.setItem(7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
 
         String periodB64 = plugin.getConfig().getString("gui.buttons.period", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19");
         inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(periodB64)
             .name("&eПериод: " + currentPeriod.getDisplayName())
-            .lore(
-                currentPeriod.getDescription(),
-                "",
-                "&a▶ Нажмите для переключения периода"
-            ).build());
+            .lore("", currentPeriod.getDescription(), "", "&a▶ Нажмите для смены периода")
+            .build());
 
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
         String catName = catOpt.map(Category::displayName).orElse(currentCategory);
 
         String categoryB64 = plugin.getConfig().getString("gui.buttons.category", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=");
-        inventory.setItem(6, new ItemBuilder(Material.PLAYER_HEAD)
+        inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(categoryB64)
             .name("&eКатегория: " + catName)
-            .lore(
-                "&7Текущая категория: &f" + catName,
-                "",
-                "&a▶ Нажмите для смены категории"
-            ).build());
-
-        inventory.setItem(8, new ItemBuilder(Material.PLAYER_HEAD)
-            .name("&c" + (target.getName() != null ? target.getName() : "Unknown"))
-            .skullOwner(target.getUniqueId())
+            .lore("", "&7Текущая категория: &f" + catName, "", "&a▶ Нажмите для выбора категории")
             .build());
 
-        // Footer buttons (Row 2: 18-26)
-        for (int i = 18; i < 25; i++) {
+        inventory.setItem(6, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        inventory.setItem(7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+
+        inventory.setItem(8, new ItemBuilder(Material.PLAYER_HEAD)
+            .skullOwner(target.getUniqueId())
+            .name("&c" + (target.getName() != null ? target.getName() : "Unknown"))
+            .lore("", "&7Профиль оппонента")
+            .build());
+
+        // Row 1 (9-17): PURE GLASS ROW (gui-gen-4 Rule 4)
+        for (int i = 9; i <= 17; i++) {
             inventory.setItem(i, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         }
 
-        String backB64 = plugin.getConfig().getString("gui.buttons.back", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmM2NTEyMjI1NWMwNDY3ZmFlNzA5ODcyODRmOTc2YWMxYWUzN2VjZTQ2YmMzZmNhMjdjZTMyN2JiMWE3ZCJ9fX0=");
-        inventory.setItem(25, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(backB64)
-            .name("&e◀ Назад в топ")
-            .lore("&7Вернуться в главную таблицу лидеров")
-            .build());
-            
+        // Footer (45-53)
+        for (int i = 45; i < 52; i++) {
+            inventory.setItem(i, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        }
+
+        // Slot 52: Back button
+        if (GuiNavigationManager.hasHistory(viewer)) {
+            String backB64 = plugin.getConfig().getString("gui.buttons.back", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmM2NTEyMjI1NWMwNDY3ZmFlNzA5ODcyODRmOTc2YWMxYWUzN2VjZTQ2YmMzZmNhMjdjZTMyN2JiMWE3ZCJ9fX0=");
+            inventory.setItem(52, new ItemBuilder(Material.PLAYER_HEAD)
+                .base64Head(backB64)
+                .name("&e◀ Назад")
+                .lore("", "&7Вернуться в предыдущее меню", "", "&a▶ Нажмите для возврата")
+                .build());
+        } else {
+            inventory.setItem(52, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        }
+
+        // Slot 53: Close button
         String closeB64 = plugin.getConfig().getString("gui.buttons.close", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=");
-        inventory.setItem(26, new ItemBuilder(Material.PLAYER_HEAD)
+        inventory.setItem(53, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
             .build());
@@ -132,11 +142,17 @@ public class PlayerComparisonGui extends BaseGui {
             String diffStr = diff == 0 ? "&7Показатели одинаковы!" : (diff > 0 ? "&aВы опережаете на " + (long)diff + " " + scoreUnit : "&cВы отстаете на " + (long)Math.abs(diff) + " " + scoreUnit);
 
             Bukkit.getScheduler().runTask(plugin, () -> {
-                // Left side: Viewer stats (Slot 10)
-                inventory.setItem(10, new ItemBuilder(Material.PLAYER_HEAD)
+                // Clear work area (18-44)
+                for (int i = 18; i <= 44; i++) {
+                    inventory.setItem(i, null);
+                }
+
+                // Left side: Viewer stats (Slot 20)
+                inventory.setItem(20, new ItemBuilder(Material.PLAYER_HEAD)
                     .skullOwner(viewer.getUniqueId())
                     .name("&e" + viewer.getName())
                     .lore(
+                        "",
                         "&7Категория: &f" + catName,
                         "&7Период: " + currentPeriod.getDisplayName(),
                         "",
@@ -145,10 +161,11 @@ public class PlayerComparisonGui extends BaseGui {
                         "&7" + scoreUnit + ": &a" + (long) s1.score()
                     ).build());
 
-                // Center: Comparison Summary (Slot 13)
-                inventory.setItem(13, new ItemBuilder(Material.PAPER)
+                // Center: Comparison Summary (Slot 22)
+                inventory.setItem(22, new ItemBuilder(Material.PAPER)
                     .name("&6⚔️ Итог сравнения")
                     .lore(
+                        "",
                         "&e" + viewer.getName() + " &7vs &c" + (target.getName() != null ? target.getName() : "Unknown"),
                         "&7Ранг: &e#" + (s1.rank() > 0 ? s1.rank() : "N/A") + " &7| &c#" + (s2.rank() > 0 ? s2.rank() : "N/A"),
                         "&7" + scoreUnit + ": &e" + (long) s1.score() + " &7| &c" + (long) s2.score(),
@@ -156,11 +173,12 @@ public class PlayerComparisonGui extends BaseGui {
                         diffStr
                     ).build());
 
-                // Right side: Target stats (Slot 16)
-                inventory.setItem(16, new ItemBuilder(Material.PLAYER_HEAD)
+                // Right side: Target stats (Slot 24)
+                inventory.setItem(24, new ItemBuilder(Material.PLAYER_HEAD)
                     .skullOwner(target.getUniqueId())
                     .name("&c" + (target.getName() != null ? target.getName() : "Unknown"))
                     .lore(
+                        "",
                         "&7Категория: &f" + catName,
                         "&7Период: " + currentPeriod.getDisplayName(),
                         "",
@@ -168,6 +186,33 @@ public class PlayerComparisonGui extends BaseGui {
                                : "&7Ранг: &c#" + (s2.rank() > 0 ? s2.rank() : "Не в топе"),
                         "&7" + scoreUnit + ": &c" + (long) s2.score()
                     ).build());
+
+                // Quick category switching row (Slots 29..33)
+                List<Category> allCats = plugin.getCategoryManager().getAllCategories().stream()
+                    .filter(Category::enabled)
+                    .toList();
+
+                int[] quickSlots = {29, 30, 31, 32, 33};
+                for (int i = 0; i < quickSlots.length && i < allCats.size(); i++) {
+                    Category cat = allCats.get(i);
+                    boolean isSelected = cat.name().equalsIgnoreCase(currentCategory);
+                    String defaultCatB64 = switch (cat.name().toLowerCase()) {
+                        case "kills" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
+                        case "bounty-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+                        default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+                    };
+                    String catHead = plugin.getConfig().getString("gui.buttons.categories." + cat.name(), defaultCatB64);
+
+                    inventory.setItem(quickSlots[i], new ItemBuilder(Material.PLAYER_HEAD)
+                        .base64Head(catHead)
+                        .name((isSelected ? "&a&l▶ " : "&e") + cat.displayName())
+                        .lore(
+                            "",
+                            "&7Статус: " + (isSelected ? "&aВыбрано" : "&7Выбрать"),
+                            "",
+                            "&a▶ Нажмите для сравнения в этой категории"
+                        ).build());
+                }
             });
         });
     }
@@ -176,17 +221,52 @@ public class PlayerComparisonGui extends BaseGui {
     public void handleClick(InventoryClickEvent event) {
         int slot = event.getSlot();
 
+        GuiNavigationManager.GuiState currentState = new GuiNavigationManager.GuiState(
+            GuiNavigationManager.GuiState.GuiType.PLAYER_COMPARISON,
+            currentCategory, currentPeriod, "player", target, 1
+        );
+
+        if (slot == 2) {
+            GuiNavigationManager.pushState(viewer, currentState);
+            viewer.openInventory(new PlayerStatsGui(plugin, viewer, viewer, currentCategory, currentPeriod).getInventory());
+            return;
+        }
+
         if (slot == 4) {
-            // Cycle period (stay in comparison GUI with target player)
             TimePeriod nextPeriod = currentPeriod.next();
             viewer.openInventory(new PlayerComparisonGui(plugin, viewer, target, currentCategory, nextPeriod).getInventory());
-        } else if (slot == 6) {
-            // Category selector (pass target player so selecting a category stays in comparison view!)
-            viewer.openInventory(new CategorySelectGui(plugin, viewer, currentPeriod, target).getInventory());
-        } else if (slot == 25) {
-            // Back to main leaderboard
-            viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, currentPeriod, 1).getInventory());
-        } else if (slot == 26) {
+            return;
+        }
+
+        if (slot == 5) {
+            GuiNavigationManager.pushState(viewer, currentState);
+            viewer.openInventory(new CategorySelectGui(plugin, viewer, currentPeriod, "player", target).getInventory());
+            return;
+        }
+
+        // Quick category selection (29..33)
+        List<Category> allCats = plugin.getCategoryManager().getAllCategories().stream()
+            .filter(Category::enabled)
+            .toList();
+
+        int[] quickSlots = {29, 30, 31, 32, 33};
+        for (int i = 0; i < quickSlots.length && i < allCats.size(); i++) {
+            if (quickSlots[i] == slot) {
+                Category cat = allCats.get(i);
+                viewer.openInventory(new PlayerComparisonGui(plugin, viewer, target, cat.name(), currentPeriod).getInventory());
+                return;
+            }
+        }
+
+        if (slot == 52) {
+            if (GuiNavigationManager.hasHistory(viewer)) {
+                GuiNavigationManager.goBack(plugin, viewer);
+            }
+            return;
+        }
+
+        if (slot == 53) {
+            GuiNavigationManager.clearHistory(viewer);
             viewer.closeInventory();
         }
     }

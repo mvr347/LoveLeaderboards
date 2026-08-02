@@ -9,18 +9,20 @@ public class LeaderboardMonthlyGui extends BaseGui {
     private final LoveLeaderboards plugin;
     private final Player viewer;
     private final String currentCategory;
+    private final String entityType;
 
     public LeaderboardMonthlyGui(LoveLeaderboards plugin, Player viewer, String currentCategory, String entityType) {
         this.plugin = plugin;
         this.viewer = viewer;
         this.currentCategory = currentCategory;
-        LeaderboardMainGui mainGui = new LeaderboardMainGui(plugin, viewer, currentCategory, TimePeriod.MONTHLY, 1);
+        this.entityType = entityType != null ? entityType : "player";
+        LeaderboardMainGui mainGui = new LeaderboardMainGui(plugin, viewer, currentCategory, TimePeriod.MONTHLY, this.entityType, 1);
         this.inventory = mainGui.getInventory();
     }
 
     @Override
     public void open(Player player) {
-        player.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, TimePeriod.MONTHLY, 1).getInventory());
+        player.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, TimePeriod.MONTHLY, entityType, 1).getInventory());
     }
 
     @Override

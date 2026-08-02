@@ -7,13 +7,13 @@ import dev.lovelace.loveleaderboards.models.PlayerStats;
 import dev.lovelace.loveleaderboards.models.TimePeriod;
 import dev.lovelace.loveleaderboards.utils.ItemBuilder;
 import dev.lovelace.loveleaderboards.utils.TextUtil;
-import net.wesjd.anvilgui.AnvilGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +23,7 @@ public class LeaderboardMainGui extends BaseGui {
     private final Player viewer;
     private final String currentCategory;
     private final TimePeriod currentPeriod;
+    private final String entityType; // "player" or "clan"
     private final int page;
 
     private static final int ITEMS_PER_PAGE = 21;
@@ -40,15 +41,31 @@ public class LeaderboardMainGui extends BaseGui {
             viewer,
             plugin.getCategoryManager().getAllCategories().stream().findFirst().map(Category::name).orElse("kills"),
             TimePeriod.ALL_TIME,
+            "player",
             1
         );
     }
 
     public LeaderboardMainGui(LoveLeaderboards plugin, Player viewer, String category, TimePeriod period, int page) {
+        this(
+            plugin,
+            viewer,
+            category,
+            period,
+            plugin.getCategoryManager().getCategory(category).map(Category::getEntityType).orElse("player"),
+            page
+        );
+    }
+
+    public LeaderboardMainGui(LoveLeaderboards plugin, Player viewer, String category, TimePeriod period, String entityType, int page) {
         this.plugin = plugin;
         this.viewer = viewer;
         this.currentCategory = category;
         this.currentPeriod = period;
+        
+        Optional<Category> catOpt = plugin.getCategoryManager().getCategory(category);
+        String resolvedType = entityType != null ? entityType : catOpt.map(Category::getEntityType).orElse("player");
+        this.entityType = resolvedType;
         this.page = Math.max(1, page);
 
         String title = plugin.getConfig().getString("gui.main.title", "&6⭐ Таблица Лидеров");
@@ -58,71 +75,79 @@ public class LeaderboardMainGui extends BaseGui {
     }
 
     private void setup() {
-        // gui-gen-4 Rules:
-        // 1. Header (0-8): Slot 0 Head, Slot 1 Glass, Slots 2,4,6,7 Controls (with glass at 3,5), Slot 8 Glass
-        // 2. Row 1 (9-17): PURE GLASS ROW (visual separator)
-        // 3. Side walls removed, Pagination only at 36, 44 if active.
-        // 4. Footer: removed page item.
-
-        // Header glass borders
+        // gui-gen-4 Header (0-8)
         inventory.setItem(1, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        inventory.setItem(3, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        inventory.setItem(5, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        inventory.setItem(2, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        inventory.setItem(6, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        inventory.setItem(7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(8, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
 
-        // Header controls (2, 4, 6, 7)
-        String myStatsB64 = plugin.getConfig().getString("gui.buttons.my-stats", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjc2YjNiY2RmZDIxMmZhNTEzNDVlYWUwNDc1YjFjYzlkMjg0YWNlNTI0MjJmYjI2Yzg4NDFjYmE5NGEzOTJjNCJ9fX0=");
-        inventory.setItem(2, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(myStatsB64)
-            .name("&e📊 Моя статистика")
-            .lore("&7Просмотреть свои показатели", "", "&a▶ Нажмите для просмотра")
-            .build());
+        // Slot 3: Entity Type Switcher (Players vs Clans)
+        boolean isClanView = "clan".equalsIgnoreCase(entityType);
+        String typeB64 = isClanView
+            ? "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0="
+            : "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM2MzZWQ3In19fQ==";
+        inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
+            .base64Head(typeB64)
+            .name("&eТип: &f" + (isClanView ? "👑 Кланы" : "👥 Игроки"))
+            .lore(
+                "",
+                "&7Текущий режим топа: &f" + (isClanView ? "Топы Кланов" : "Топы Игроков"),
+                "",
+                "&a▶ Нажмите для переключения"
+            ).build());
 
+        // Slot 4: Time Period
         String periodB64 = plugin.getConfig().getString("gui.buttons.period", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19");
         inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(periodB64)
             .name("&eПериод: " + currentPeriod.getDisplayName())
             .lore(
+                "",
                 currentPeriod.getDescription(),
                 "",
-                "&a▶ Нажмите, чтобы переключить период"
+                "&a▶ Нажмите для смены периода"
             ).build());
 
+        // Slot 5: Category Selector
         String categoryB64 = plugin.getConfig().getString("gui.buttons.category", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=");
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
         String catName = catOpt.map(Category::displayName).orElse(currentCategory);
 
-        inventory.setItem(6, new ItemBuilder(Material.PLAYER_HEAD)
+        inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(categoryB64)
             .name("&eКатегория: " + catName)
             .lore(
+                "",
                 "&7Текущий топ: &f" + catName,
                 "",
-                "&a▶ Нажмите, чтобы выбрать категорию"
+                "&a▶ Нажмите для выбора категории"
             ).build());
 
-        String compareB64 = plugin.getConfig().getString("gui.buttons.comparison", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=");
-        inventory.setItem(7, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(compareB64)
-            .name("&6⚔️ Сравнение")
-            .lore(
-                "&7Сравнить свои показатели с другим игроком",
-                "",
-                "&a▶ Нажмите для ввода ника"
-            ).build());
-
-        // Row 1 (9-17): Pure glass row separator
+        // Row 1 (9-17): PURE GLASS ROW (gui-gen-4 Rule 4)
         for (int i = 9; i <= 17; i++) {
             inventory.setItem(i, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         }
 
-        // Footer (45-52 glass, 53 close)
-        for (int i = 45; i < 53; i++) {
+        // Footer (45-53):
+        for (int i = 45; i < 52; i++) {
             inventory.setItem(i, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         }
 
-        String closeB64 = plugin.getConfig().getString("gui.buttons.close", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=");
+        // Slot 52: Back button
+        if (GuiNavigationManager.hasHistory(viewer)) {
+            String backB64 = plugin.getConfig().getString("gui.buttons.back", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmM2NTEyMjI1NWMwNDY3ZmFlNzA5ODcyODRmOTc2YWMxYWUzN2VjZTQ2YmMzZmNhMjdjZTMyN2JiMWE3ZCJ9fX0=");
+            inventory.setItem(52, new ItemBuilder(Material.PLAYER_HEAD)
+                .base64Head(backB64)
+                .name("&e◀ Назад")
+                .lore("", "&7Вернуться в предыдущее меню", "", "&a▶ Нажмите для возврата")
+                .build());
+        } else {
+            inventory.setItem(52, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        }
+
         // Slot 53: Close button
+        String closeB64 = plugin.getConfig().getString("gui.buttons.close", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=");
         inventory.setItem(53, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
@@ -135,15 +160,14 @@ public class LeaderboardMainGui extends BaseGui {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
             Category cat = catOpt.orElse(new Category(currentCategory, currentCategory, "", true, 0, "both", "none"));
-            String entityType = cat.getEntityType();
-            boolean isClan = cat.isClanCategory();
+            boolean isClanView = "clan".equalsIgnoreCase(entityType);
             String scoreUnit = cat.getScoreUnit();
 
-            // 1. Fetch player rank/score for slot 0
-            Optional<PlayerStats> playerStats = isClan ? Optional.empty()
+            // 1. Fetch player rank/score for Slot 0
+            Optional<PlayerStats> playerStats = isClanView ? Optional.empty()
                 : plugin.getLeaderboardManager().getPlayerStats(viewer.getUniqueId(), currentCategory, currentPeriod.getDbKey());
 
-            // 2. Fetch Top 50 entries for correct entityType ("clan" or "player")
+            // 2. Fetch Top 50 entries for selected entityType ("clan" or "player")
             List<LeaderboardEntry> top50 = plugin.getLeaderboardManager().getTop(currentCategory, entityType, currentPeriod.getDbKey(), TOTAL_LIMIT);
 
             int maxPages = (int) Math.ceil((double) Math.min(top50.size(), TOTAL_LIMIT) / ITEMS_PER_PAGE);
@@ -157,96 +181,115 @@ public class LeaderboardMainGui extends BaseGui {
             int finalMaxPages = maxPages;
             int finalActualPage = actualPage;
 
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                // Update Slot 0 (Viewer stats or clan stats)
-                if (isClan) {
-                    String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
-                    ItemBuilder headBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                        .base64Head("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=")
-                        .name("&eКланы: " + cat.displayName())
-                        .lore(
-                            "&7Категория: &f" + cat.displayName(),
-                            "&7Период: " + currentPeriod.getDisplayName(),
-                            "",
-                            clanName != null ? "&7Ваш клан: &a" + clanName : "&7Ваш клан: &cНе состоите в клане"
-                        );
-                    inventory.setItem(0, headBuilder.build());
-                } else {
-                    ItemBuilder headBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                        .skullOwner(viewer.getUniqueId())
-                        .name("&e" + viewer.getName())
-                        .lore(
-                            "&7Категория: &f" + cat.displayName(),
-                            "&7Период: " + currentPeriod.getDisplayName(),
-                            "",
-                            playerStats.map(s -> s.rank() > 0 ? "&7Ваше место: &e#" + s.rank() : "&7Ваше место: &cНе в топе").orElse("&7Ваше место: &cНе в топе"),
-                            playerStats.map(s -> "&7" + scoreUnit + ": &a" + (long)s.score()).orElse("&7" + scoreUnit + ": &a0")
-                        );
-                    inventory.setItem(0, headBuilder.build());
-                }
+            // 3. Pre-build Slot 0 item ASYNCHRONOUSLY
+            org.bukkit.inventory.ItemStack slot0Item;
+            if (isClanView) {
+                String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
+                slot0Item = new ItemBuilder(Material.PLAYER_HEAD)
+                    .base64Head("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=")
+                    .name("&eКланы: " + cat.displayName())
+                    .lore(
+                        "",
+                        "&7Категория: &f" + cat.displayName(),
+                        "&7Период: " + currentPeriod.getDisplayName(),
+                        "",
+                        clanName != null ? "&7Ваш клан: &a" + clanName : "&7Ваш клан: &cНе состоите в клане"
+                    ).build();
+            } else {
+                slot0Item = new ItemBuilder(Material.PLAYER_HEAD)
+                    .skullOwner(viewer.getUniqueId())
+                    .name("&e" + viewer.getName())
+                    .lore(
+                        "",
+                        "&7Категория: &f" + cat.displayName(),
+                        "&7Период: " + currentPeriod.getDisplayName(),
+                        "",
+                        playerStats.map(s -> s.rank() > 0 ? "&7Ваше место: &e#" + s.rank() : "&7Ваше место: &cНе в топе").orElse("&7Ваше место: &cНе в топе"),
+                        playerStats.map(s -> "&7" + scoreUnit + ": &a" + (long)s.score()).orElse("&7" + scoreUnit + ": &a0"),
+                        "",
+                        "&a▶ Нажмите, чтобы открыть статистику"
+                    ).build();
+            }
 
-                // Clear grid center slots
+            // 4. Pre-build Grid Items ASYNCHRONOUSLY (Profile resolving happens off main thread!)
+            List<org.bukkit.inventory.ItemStack> gridItems = new ArrayList<>();
+            for (int i = 0; i < pageEntries.size(); i++) {
+                LeaderboardEntry entry = pageEntries.get(i);
+                String color = entry.rank() == 1 ? "&6&l" : (entry.rank() <= 3 ? "&e&l" : "&7");
+
+                ItemBuilder itemBuilder;
+                if (entry.entityId().equals("empty")) {
+                    itemBuilder = new ItemBuilder(Material.SKELETON_SKULL)
+                        .name("&7#" + entry.rank() + " &8Свободное место")
+                        .lore("", "&7Позиция: &f#" + entry.rank(), "&7Статус: &8Пусто");
+                } else if (isClanView) {
+                    itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
+                        .base64Head("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=")
+                        .name(color + "#" + entry.rank() + " &f" + entry.entityName())
+                        .lore(
+                            "",
+                            "&7Позиция клана: &f#" + entry.rank(),
+                            "&7" + scoreUnit + ": &a" + (long) entry.score()
+                        );
+                } else {
+                    itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
+                        .name(color + "#" + entry.rank() + " &f" + entry.entityName())
+                        .lore(
+                            "",
+                            "&7Позиция: &f#" + entry.rank(),
+                            "&7" + scoreUnit + ": &a" + (long) entry.score(),
+                            "",
+                            "&aЛКМ &7— статистику игрока",
+                            "&aПКМ &7— сравнить со мной"
+                        );
+                    try {
+                        java.util.UUID uuid = java.util.UUID.fromString(entry.entityId());
+                        itemBuilder.playerProfile(uuid, entry.entityName());
+                    } catch (Exception ignored) {
+                        itemBuilder.skullOwner(entry.entityName());
+                    }
+                }
+                gridItems.add(itemBuilder.build());
+            }
+
+            // 5. Pre-build Pagination Items ASYNCHRONOUSLY
+            org.bukkit.inventory.ItemStack prevItem = null;
+            if (finalActualPage > 1) {
+                String prevB64 = plugin.getConfig().getString("gui.buttons.prev-page", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=");
+                prevItem = new ItemBuilder(Material.PLAYER_HEAD)
+                    .base64Head(prevB64)
+                    .name("&e◀ Предыдущая страница")
+                    .lore("", "&7Страница " + (finalActualPage - 1) + " из " + finalMaxPages)
+                    .build();
+            }
+
+            org.bukkit.inventory.ItemStack nextItem = null;
+            if (finalActualPage < finalMaxPages) {
+                String nextB64 = plugin.getConfig().getString("gui.buttons.next-page", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjgyYWQxYjRjY2RiNjZkNTkyNzJmMTc3YWMwZGRhZDE0YzA0NzJjNzcyNTM1ZTUwZmE5ZDkxNGIyMjFhNjc5NSJ9fX0=");
+                nextItem = new ItemBuilder(Material.PLAYER_HEAD)
+                    .base64Head(nextB64)
+                    .name("&eСледующая страница ▶")
+                    .lore("", "&7Страница " + (finalActualPage + 1) + " из " + finalMaxPages)
+                    .build();
+            }
+
+            org.bukkit.inventory.ItemStack finalPrevItem = prevItem;
+            org.bukkit.inventory.ItemStack finalNextItem = nextItem;
+
+            // 6. Apply pre-built items on main thread instantly
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                inventory.setItem(0, slot0Item);
+
                 for (int slot : GRID_SLOTS) {
                     inventory.setItem(slot, null);
                 }
 
-                // Render page items into grid slots
-                for (int i = 0; i < pageEntries.size(); i++) {
-                    LeaderboardEntry entry = pageEntries.get(i);
-                    String color = entry.rank() == 1 ? "&6&l" : (entry.rank() <= 3 ? "&e&l" : "&7");
-
-                    ItemBuilder itemBuilder;
-                    if (entry.entityId().equals("empty")) {
-                        itemBuilder = new ItemBuilder(Material.SKELETON_SKULL)
-                            .name("&7#" + entry.rank() + " &8Свободное место")
-                            .lore("&7Позиция: &f#" + entry.rank(), "&7Статус: &8Пусто");
-                    } else if (isClan) {
-                        itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                            .base64Head("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=")
-                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
-                            .lore(
-                                "&7Позиция клана: &f#" + entry.rank(),
-                                "&7" + scoreUnit + ": &a" + (long) entry.score()
-                            );
-                    } else {
-                        itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
-                            .lore(
-                                "&7Позиция: &f#" + entry.rank(),
-                                "&7" + scoreUnit + ": &a" + (long) entry.score()
-                            );
-                        try {
-                            java.util.UUID uuid = java.util.UUID.fromString(entry.entityId());
-                            itemBuilder.playerProfile(uuid, entry.entityName());
-                        } catch (Exception ignored) {
-                            itemBuilder.skullOwner(entry.entityName());
-                        }
-                    }
-                    inventory.setItem(GRID_SLOTS[i], itemBuilder.build());
+                for (int i = 0; i < gridItems.size(); i++) {
+                    inventory.setItem(GRID_SLOTS[i], gridItems.get(i));
                 }
 
-                // Pagination buttons (36 / 44 in side walls)
-                if (finalActualPage > 1) {
-                    String prevB64 = plugin.getConfig().getString("gui.buttons.prev-page", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=");
-                    inventory.setItem(36, new ItemBuilder(Material.PLAYER_HEAD)
-                        .base64Head(prevB64)
-                        .name("&e◀ Предыдущая страница")
-                        .lore("&7Страница " + (finalActualPage - 1) + " из " + finalMaxPages)
-                        .build());
-                } else {
-                    inventory.setItem(36, null);
-                }
-
-                if (finalActualPage < finalMaxPages) {
-                    String nextB64 = plugin.getConfig().getString("gui.buttons.next-page", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjgyYWQxYjRjY2RiNjZkNTkyNzJmMTc3YWMwZGRhZDE0YzA0NzJjNzcyNTM1ZTUwZmE5ZDkxNGIyMjFhNjc5NSJ9fX0=");
-                    inventory.setItem(44, new ItemBuilder(Material.PLAYER_HEAD)
-                        .base64Head(nextB64)
-                        .name("&eСледующая страница ▶")
-                        .lore("&7Страница " + (finalActualPage + 1) + " из " + finalMaxPages)
-                        .build());
-                } else {
-                    inventory.setItem(44, null);
-                }
+                inventory.setItem(36, finalPrevItem);
+                inventory.setItem(44, finalNextItem);
             });
         });
     }
@@ -255,61 +298,101 @@ public class LeaderboardMainGui extends BaseGui {
     public void handleClick(InventoryClickEvent event) {
         int slot = event.getSlot();
 
-        if (slot == 2) {
-            // Player stats
-            viewer.openInventory(new PlayerStatsGui(plugin, viewer).getInventory());
-        } else if (slot == 4) {
+        GuiNavigationManager.GuiState currentState = new GuiNavigationManager.GuiState(
+            GuiNavigationManager.GuiState.GuiType.MAIN_LEADERBOARD,
+            currentCategory, currentPeriod, entityType, null, page
+        );
+
+        if (slot == 0) {
+            // Slot 0 click: Open Player Statistics (PlayerStatsGui)
+            GuiNavigationManager.pushState(viewer, currentState);
+            viewer.openInventory(new PlayerStatsGui(plugin, viewer, viewer, currentCategory, currentPeriod).getInventory());
+            return;
+        }
+
+        if (slot == 3) {
+            // Toggle entity type (player <-> clan)
+            String nextType = "clan".equalsIgnoreCase(entityType) ? "player" : "clan";
+            Optional<Category> firstForType = plugin.getCategoryManager().getAllCategories().stream()
+                .filter(Category::enabled)
+                .filter(c -> c.getEntityType().equalsIgnoreCase(nextType))
+                .findFirst();
+            String nextCat = firstForType.map(Category::name).orElse(currentCategory);
+
+            viewer.openInventory(new LeaderboardMainGui(plugin, viewer, nextCat, currentPeriod, nextType, 1).getInventory());
+            return;
+        }
+
+        if (slot == 4) {
             // Cycle period
             TimePeriod nextPeriod = currentPeriod.next();
-            viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, nextPeriod, 1).getInventory());
-        } else if (slot == 6) {
+            viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, nextPeriod, entityType, 1).getInventory());
+            return;
+        }
+
+        if (slot == 5) {
             // Open Category Selector
-            viewer.openInventory(new CategorySelectGui(plugin, viewer, currentPeriod).getInventory());
-        } else if (slot == 7) {
-            // Open Comparison Anvil
-            openComparisonAnvil();
-        } else if (slot == 36 && page > 1) {
+            GuiNavigationManager.pushState(viewer, currentState);
+            viewer.openInventory(new CategorySelectGui(plugin, viewer, currentPeriod, entityType, null).getInventory());
+            return;
+        }
+
+        if (slot == 36 && page > 1) {
             // Previous page
-            viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, currentPeriod, page - 1).getInventory());
-        } else if (slot == 44) {
+            viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, currentPeriod, entityType, page - 1).getInventory());
+            return;
+        }
+
+        if (slot == 44) {
             // Next page
             int maxPages = (int) Math.ceil((double) TOTAL_LIMIT / ITEMS_PER_PAGE);
             if (page < maxPages) {
-                viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, currentPeriod, page + 1).getInventory());
+                viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, currentPeriod, entityType, page + 1).getInventory());
             }
-        } else if (slot == 53) {
+            return;
+        }
+
+        // Grid clicks: player head entry
+        if (!"clan".equalsIgnoreCase(entityType)) {
+            for (int i = 0; i < GRID_SLOTS.length; i++) {
+                if (GRID_SLOTS[i] == slot) {
+                    List<LeaderboardEntry> top50 = plugin.getLeaderboardManager().getTop(currentCategory, entityType, currentPeriod.getDbKey(), TOTAL_LIMIT);
+                    int startIndex = (page - 1) * ITEMS_PER_PAGE;
+                    int index = startIndex + i;
+                    if (index < top50.size()) {
+                        LeaderboardEntry entry = top50.get(index);
+                        if (!entry.entityId().equals("empty")) {
+                            try {
+                                java.util.UUID uuid = java.util.UUID.fromString(entry.entityId());
+                                OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(uuid);
+                                GuiNavigationManager.pushState(viewer, currentState);
+
+                                if (event.isRightClick()) {
+                                    // Compare directly
+                                    viewer.openInventory(new PlayerComparisonGui(plugin, viewer, targetPlayer, currentCategory, currentPeriod).getInventory());
+                                } else {
+                                    // Open target player stats
+                                    viewer.openInventory(new PlayerStatsGui(plugin, viewer, targetPlayer, currentCategory, currentPeriod).getInventory());
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+
+        if (slot == 52) {
+            // Back button
+            if (GuiNavigationManager.hasHistory(viewer)) {
+                GuiNavigationManager.goBack(plugin, viewer);
+            }
+            return;
+        }
+
+        if (slot == 53) {
+            GuiNavigationManager.clearHistory(viewer);
             viewer.closeInventory();
         }
-    }
-
-    private void openComparisonAnvil() {
-        new AnvilGUI.Builder()
-            .plugin(plugin)
-            .title("Введите ник игрока")
-            .text("Игрок")
-            .itemLeft(new org.bukkit.inventory.ItemStack(Material.PAPER))
-            .onClick((slot, stateSnapshot) -> {
-                if (slot != AnvilGUI.Slot.OUTPUT) return Collections.emptyList();
-                String targetName = stateSnapshot.getText().trim();
-                if (targetName.equalsIgnoreCase(viewer.getName())) {
-                    return List.of(AnvilGUI.ResponseAction.replaceInputText("Нельзя сравнить с собой!"));
-                }
-
-                OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(targetName);
-                if (target == null) {
-                    target = Bukkit.getOfflinePlayer(targetName);
-                }
-
-                OfflinePlayer finalTarget = target;
-                return List.of(
-                    AnvilGUI.ResponseAction.close(),
-                    AnvilGUI.ResponseAction.run(() -> {
-                        Bukkit.getScheduler().runTask(plugin, () -> {
-                            viewer.openInventory(new PlayerComparisonGui(plugin, viewer, finalTarget, currentCategory, currentPeriod).getInventory());
-                        });
-                    })
-                );
-            })
-            .open(viewer);
     }
 }

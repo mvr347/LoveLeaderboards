@@ -18,7 +18,7 @@ public record Category(
     }
 
     public String getEntityType() {
-        if ("LoveClans".equalsIgnoreCase(integration) || name.toLowerCase().contains("clan")) {
+        if ("LoveClans".equalsIgnoreCase(integration) || "clan.influence".equalsIgnoreCase(integration) || "clan.wealth".equalsIgnoreCase(integration) || name.toLowerCase().contains("clan")) {
             return "clan";
         }
         return "player";
@@ -33,8 +33,12 @@ public record Category(
         return switch (name.toLowerCase()) {
             case "kills" -> "Убийств";
             case "bounty-completed" -> "Бонусов";
+            case "contracts-completed" -> "Контрактов";
+            case "hunter-rating" -> "Рейтинг";
+            case "best-brewer" -> "Уровень";
             default -> "Очки";
         };
     }
 }
+
 
