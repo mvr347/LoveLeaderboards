@@ -15,6 +15,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class PlayerStatsGui extends BaseGui {
     private final LoveLeaderboards plugin;
@@ -45,26 +46,46 @@ public class PlayerStatsGui extends BaseGui {
         boolean isSelf = this.targetPlayer.getUniqueId().equals(viewer.getUniqueId());
         String titleKey = isSelf ? "gui.player-stats.title" : "gui.player-stats.target-title";
         String defaultTitle = isSelf ? "&6📊 Моя Статистика" : "&6📊 Статистика: &e" + (this.targetPlayer.getName() != null ? this.targetPlayer.getName() : "Игрока");
-        String title = plugin.getConfig().getString(titleKey, defaultTitle);
+        String title = plugin.getConfig().getString("gui.player-stats.title", defaultTitle);
 
         this.inventory = Bukkit.createInventory(this, 54, TextUtil.parse(title));
         setup();
     }
 
     private void setup() {
+        String clanName = plugin.getPlayerClanName(targetPlayer.getUniqueId());
+        boolean hasClan = clanName != null && !clanName.isEmpty();
+
+        if (!hasClan) {
+            this.entityTypeFilter = "player";
+        }
+
         // gui-gen-4 Header (0-8)
         boolean isSelf = targetPlayer.getUniqueId().equals(viewer.getUniqueId());
-        inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
-            .skullOwner(targetPlayer.getUniqueId())
-            .name("&e" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"))
-            .lore(
-                "",
-                "&7Профиль: &f" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"),
-                isSelf ? "&7Личная статистика по категориям" : "&7Нажмите для сравнения со мной",
-                "",
-                isSelf ? "&a▶ Вы смотрите свой профиль" : "&a▶ Нажмите для сравнения"
-            )
-            .build());
+        boolean isClanMode = "clan".equalsIgnoreCase(entityTypeFilter);
+
+        if (isClanMode && hasClan) {
+            inventory.setItem(0, new ItemBuilder(Material.RED_BANNER)
+                .name("&eКлан: &a" + clanName)
+                .lore(
+                    "",
+                    "&7Статистика клана по категориям",
+                    "&7Клан: &a" + clanName
+                )
+                .build());
+        } else {
+            inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
+                .skullOwner(targetPlayer.getUniqueId())
+                .name("&e" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"))
+                .lore(
+                    "",
+                    "&7Профиль: &f" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"),
+                    isSelf ? "&7Личная статистика по категориям" : "&7Нажмите для сравнения со мной",
+                    "",
+                    isSelf ? "&a▶ Вы смотрите свой профиль" : "&a▶ Нажмите для сравнения"
+                )
+                .build());
+        }
 
         inventory.setItem(1, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(2, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
@@ -72,16 +93,35 @@ public class PlayerStatsGui extends BaseGui {
         inventory.setItem(7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(8, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
 
-        // Slot 3: Filter type switcher
-        boolean isClanView = "clan".equalsIgnoreCase(entityTypeFilter);
-        String typeB64 = isClanView
-            ? "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0="
-            : "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM2MzZWQ3In19fQ==";
-        inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(typeB64)
-            .name("&eФильтр: &f" + (isClanView ? "👑 Категории Клана" : "👥 Категории Игрока"))
-            .lore("", "&7Переключение типа категорий", "", "&a▶ Нажмите для переключения")
-            .build());
+        // Slot 3: Mode Switcher ("Я / Мой клан"). Hidden if player is not in a clan!
+        if (hasClan) {
+            if (isClanMode) {
+                inventory.setItem(3, new ItemBuilder(Material.RED_BANNER)
+                    .name("&eРежим: &f👑 Мой клан")
+                    .lore(
+                        "",
+                        "&7Текущий режим: &fМой клан (&a" + clanName + "&f)",
+                        "&7Показывает результаты вашего клана",
+                        "",
+                        "&a▶ Нажмите для перехода к \"Я\""
+                    ).build());
+            } else {
+                String playerB64 = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM2MzZWQ3In19fQ==";
+                inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
+                    .base64Head(playerB64)
+                    .name("&eРежим: &f👤 Я")
+                    .lore(
+                        "",
+                        "&7Текущий режим: &fЛичная статистика (Я)",
+                        "&7Клан: &a" + clanName,
+                        "",
+                        "&a▶ Нажмите для перехода к \"Мой клан\""
+                    ).build());
+            }
+        } else {
+            // Player has no clan -> button is NOT shown (Glass)!
+            inventory.setItem(3, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        }
 
         // Slot 4: Period selector
         String periodB64 = plugin.getConfig().getString("gui.buttons.period", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19");
@@ -139,27 +179,39 @@ public class PlayerStatsGui extends BaseGui {
                 .toList();
 
             List<org.bukkit.inventory.ItemStack> builtItems = new ArrayList<>();
+            String clanName = plugin.getPlayerClanName(targetPlayer.getUniqueId());
+
             for (Category cat : matchingCats) {
-                Optional<PlayerStats> statsOpt = plugin.getLeaderboardManager().getPlayerStats(targetPlayer.getUniqueId(), cat.name(), currentPeriod.getDbKey());
-                PlayerStats stats = statsOpt.orElse(new PlayerStats(targetPlayer.getUniqueId(), targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown", 0, 0));
+                PlayerStats stats;
+                if (cat.isClanCategory() && clanName != null) {
+                    UUID clanUuid = UUID.nameUUIDFromBytes(clanName.getBytes());
+                    Optional<PlayerStats> statsOpt = plugin.getLeaderboardManager().getPlayerStats(clanUuid, cat.name(), currentPeriod.getDbKey());
+                    stats = statsOpt.orElse(new PlayerStats(clanUuid, clanName, 0, 0));
+                } else {
+                    Optional<PlayerStats> statsOpt = plugin.getLeaderboardManager().getPlayerStats(targetPlayer.getUniqueId(), cat.name(), currentPeriod.getDbKey());
+                    stats = statsOpt.orElse(new PlayerStats(targetPlayer.getUniqueId(), targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown", 0, 0));
+                }
 
-                String defaultCatB64 = switch (cat.name().toLowerCase()) {
-                    case "kills" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
-                    case "bounty-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-                    case "contracts-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-                    case "clan-power" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19";
-                    default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-                };
-                String catHead = plugin.getConfig().getString("gui.buttons.categories." + cat.name(), defaultCatB64);
+                Material mat = cat.isClanCategory() ? Material.RED_BANNER : Material.PLAYER_HEAD;
+                ItemBuilder builder = new ItemBuilder(mat);
 
-                ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
-                    .base64Head(catHead)
-                    .name(cat.displayName())
+                if (!cat.isClanCategory()) {
+                    String defaultCatB64 = switch (cat.name().toLowerCase()) {
+                        case "kills" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
+                        case "bounty-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+                        case "contracts-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+                        default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+                    };
+                    String catHead = plugin.getConfig().getString("gui.buttons.categories." + cat.name(), defaultCatB64);
+                    builder.base64Head(catHead);
+                }
+
+                builder.name(cat.displayName())
                     .lore(
                         "",
                         "&7Категория: &f" + cat.displayName(),
                         "&7Период: " + currentPeriod.getDisplayName(),
-                        "&7Место: &e#" + (stats.rank() > 0 ? stats.rank() : "Не в топе"),
+                        cat.isClanCategory() ? "&7Место клана: &e#" + (stats.rank() > 0 ? stats.rank() : "Не в топе") : "&7Место: &e#" + (stats.rank() > 0 ? stats.rank() : "Не в топе"),
                         "&7" + cat.getScoreUnit() + ": &a" + (long) stats.score(),
                         "",
                         "&aЛКМ &7— открыть этот топ",
@@ -198,9 +250,11 @@ public class PlayerStatsGui extends BaseGui {
         }
 
         if (slot == 3) {
-            // Toggle entityTypeFilter
-            this.entityTypeFilter = "clan".equalsIgnoreCase(entityTypeFilter) ? "player" : "clan";
-            setup();
+            String clanName = plugin.getPlayerClanName(targetPlayer.getUniqueId());
+            if (clanName != null && !clanName.isEmpty()) {
+                this.entityTypeFilter = "clan".equalsIgnoreCase(entityTypeFilter) ? "player" : "clan";
+                setup();
+            }
             return;
         }
 

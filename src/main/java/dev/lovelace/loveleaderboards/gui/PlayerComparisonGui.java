@@ -77,8 +77,13 @@ public class PlayerComparisonGui extends BaseGui {
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(categoryB64)
             .name("&eКатегория: " + catName)
-            .lore("", "&7Текущая категория: &f" + catName, "", "&a▶ Нажмите для выбора категории")
-            .build());
+            .lore(
+                "",
+                "&7Текущая категория: &f" + catName,
+                "",
+                "&aЛКМ &7— следующая категория",
+                "&aПКМ &7— предыдущая категория"
+            ).build());
 
         inventory.setItem(6, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
@@ -196,22 +201,28 @@ public class PlayerComparisonGui extends BaseGui {
                 for (int i = 0; i < quickSlots.length && i < allCats.size(); i++) {
                     Category cat = allCats.get(i);
                     boolean isSelected = cat.name().equalsIgnoreCase(currentCategory);
-                    String defaultCatB64 = switch (cat.name().toLowerCase()) {
-                        case "kills" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
-                        case "bounty-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-                        default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-                    };
-                    String catHead = plugin.getConfig().getString("gui.buttons.categories." + cat.name(), defaultCatB64);
+                    Material mat = cat.isClanCategory() ? Material.RED_BANNER : Material.PLAYER_HEAD;
+                    ItemBuilder builder = new ItemBuilder(mat);
 
-                    inventory.setItem(quickSlots[i], new ItemBuilder(Material.PLAYER_HEAD)
-                        .base64Head(catHead)
-                        .name((isSelected ? "&a&l▶ " : "&e") + cat.displayName())
+                    if (!cat.isClanCategory()) {
+                        String defaultCatB64 = switch (cat.name().toLowerCase()) {
+                            case "kills" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
+                            case "bounty-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+                            default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+                        };
+                        String catHead = plugin.getConfig().getString("gui.buttons.categories." + cat.name(), defaultCatB64);
+                        builder.base64Head(catHead);
+                    }
+
+                    builder.name((isSelected ? "&a&l▶ " : "&e") + cat.displayName())
                         .lore(
                             "",
                             "&7Статус: " + (isSelected ? "&aВыбрано" : "&7Выбрать"),
                             "",
                             "&a▶ Нажмите для сравнения в этой категории"
-                        ).build());
+                        );
+
+                    inventory.setItem(quickSlots[i], builder.build());
                 }
             });
         });
@@ -221,17 +232,6 @@ public class PlayerComparisonGui extends BaseGui {
     public void handleClick(InventoryClickEvent event) {
         int slot = event.getSlot();
 
-        GuiNavigationManager.GuiState currentState = new GuiNavigationManager.GuiState(
-            GuiNavigationManager.GuiState.GuiType.PLAYER_COMPARISON,
-            currentCategory, currentPeriod, "player", target, 1
-        );
-
-        if (slot == 2) {
-            GuiNavigationManager.pushState(viewer, currentState);
-            viewer.openInventory(new PlayerStatsGui(plugin, viewer, viewer, currentCategory, currentPeriod).getInventory());
-            return;
-        }
-
         if (slot == 4) {
             TimePeriod nextPeriod = currentPeriod.next();
             viewer.openInventory(new PlayerComparisonGui(plugin, viewer, target, currentCategory, nextPeriod).getInventory());
@@ -239,8 +239,10 @@ public class PlayerComparisonGui extends BaseGui {
         }
 
         if (slot == 5) {
-            GuiNavigationManager.pushState(viewer, currentState);
-            viewer.openInventory(new CategorySelectGui(plugin, viewer, currentPeriod, "player", target).getInventory());
+            // Cycle category in-place
+            boolean forward = !event.isRightClick();
+            String nextCat = plugin.getCategoryManager().getNextCategory(currentCategory, "player", forward);
+            viewer.openInventory(new PlayerComparisonGui(plugin, viewer, target, nextCat, currentPeriod).getInventory());
             return;
         }
 

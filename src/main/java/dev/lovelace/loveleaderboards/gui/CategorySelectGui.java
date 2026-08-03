@@ -134,10 +134,15 @@ public class CategorySelectGui extends BaseGui {
 
         for (int i = 0; i < matching.size() && i < GRID_SLOTS.length; i++) {
             Category cat = matching.get(i);
-            String catHead = getHeadForCategory(cat.name());
-            ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
-                .base64Head(catHead)
-                .name(cat.displayName())
+            Material mat = cat.isClanCategory() ? Material.RED_BANNER : Material.PLAYER_HEAD;
+            ItemBuilder builder = new ItemBuilder(mat);
+
+            if (!cat.isClanCategory()) {
+                String catHead = getHeadForCategory(cat.name());
+                builder.base64Head(catHead);
+            }
+
+            builder.name(cat.displayName())
                 .lore(
                     "",
                     cat.description(),

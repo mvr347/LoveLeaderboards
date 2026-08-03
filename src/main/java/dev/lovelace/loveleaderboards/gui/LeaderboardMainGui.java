@@ -75,7 +75,7 @@ public class LeaderboardMainGui extends BaseGui {
     }
 
     private void setup() {
-        // gui-gen-4 Header (0-8)
+        // gui-gen-4 Header (0-8):
         inventory.setItem(1, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(2, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(6, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
@@ -97,7 +97,7 @@ public class LeaderboardMainGui extends BaseGui {
                 "&a▶ Нажмите для переключения"
             ).build());
 
-        // Slot 4: Time Period
+        // Slot 4: Time Period Switcher (Single toggle button)
         String periodB64 = plugin.getConfig().getString("gui.buttons.period", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19");
         inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(periodB64)
@@ -109,7 +109,7 @@ public class LeaderboardMainGui extends BaseGui {
                 "&a▶ Нажмите для смены периода"
             ).build());
 
-        // Slot 5: Category Selector
+        // Slot 5: Category Switcher (Single toggle button cycling through categories in-place)
         String categoryB64 = plugin.getConfig().getString("gui.buttons.category", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=");
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
         String catName = catOpt.map(Category::displayName).orElse(currentCategory);
@@ -121,7 +121,8 @@ public class LeaderboardMainGui extends BaseGui {
                 "",
                 "&7Текущий топ: &f" + catName,
                 "",
-                "&a▶ Нажмите для выбора категории"
+                "&aЛКМ &7— следующая категория",
+                "&aПКМ &7— предыдущая категория"
             ).build());
 
         // Row 1 (9-17): PURE GLASS ROW (gui-gen-4 Rule 4)
@@ -185,8 +186,7 @@ public class LeaderboardMainGui extends BaseGui {
             org.bukkit.inventory.ItemStack slot0Item;
             if (isClanView) {
                 String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
-                slot0Item = new ItemBuilder(Material.PLAYER_HEAD)
-                    .base64Head("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=")
+                slot0Item = new ItemBuilder(Material.RED_BANNER)
                     .name("&eКланы: " + cat.displayName())
                     .lore(
                         "",
@@ -211,7 +211,7 @@ public class LeaderboardMainGui extends BaseGui {
                     ).build();
             }
 
-            // 4. Pre-build Grid Items ASYNCHRONOUSLY (Profile resolving happens off main thread!)
+            // 4. Pre-build Grid Items ASYNCHRONOUSLY
             List<org.bukkit.inventory.ItemStack> gridItems = new ArrayList<>();
             for (int i = 0; i < pageEntries.size(); i++) {
                 LeaderboardEntry entry = pageEntries.get(i);
@@ -219,12 +219,13 @@ public class LeaderboardMainGui extends BaseGui {
 
                 ItemBuilder itemBuilder;
                 if (entry.entityId().equals("empty")) {
-                    itemBuilder = new ItemBuilder(Material.SKELETON_SKULL)
+                    // Empty rank item: WHITE BANNER (not skeleton skull!)
+                    itemBuilder = new ItemBuilder(Material.WHITE_BANNER)
                         .name("&7#" + entry.rank() + " &8Свободное место")
                         .lore("", "&7Позиция: &f#" + entry.rank(), "&7Статус: &8Пусто");
                 } else if (isClanView) {
-                    itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                        .base64Head("eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=")
+                    // Clan entry item: RED BANNER (instead of player head!)
+                    itemBuilder = new ItemBuilder(Material.RED_BANNER)
                         .name(color + "#" + entry.rank() + " &f" + entry.entityName())
                         .lore(
                             "",
@@ -276,7 +277,7 @@ public class LeaderboardMainGui extends BaseGui {
             org.bukkit.inventory.ItemStack finalPrevItem = prevItem;
             org.bukkit.inventory.ItemStack finalNextItem = nextItem;
 
-            // 6. Apply pre-built items on main thread instantly
+            // 6. Apply to inventory on main thread instantly
             Bukkit.getScheduler().runTask(plugin, () -> {
                 inventory.setItem(0, slot0Item);
 
@@ -331,9 +332,10 @@ public class LeaderboardMainGui extends BaseGui {
         }
 
         if (slot == 5) {
-            // Open Category Selector
-            GuiNavigationManager.pushState(viewer, currentState);
-            viewer.openInventory(new CategorySelectGui(plugin, viewer, currentPeriod, entityType, null).getInventory());
+            // Cycle category in-place (Single toggle button like period!)
+            boolean forward = !event.isRightClick();
+            String nextCat = plugin.getCategoryManager().getNextCategory(currentCategory, entityType, forward);
+            viewer.openInventory(new LeaderboardMainGui(plugin, viewer, nextCat, currentPeriod, entityType, 1).getInventory());
             return;
         }
 

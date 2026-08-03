@@ -7,8 +7,15 @@ public record Category(
     boolean enabled,
     int sortOrder,
     String timePeriodEnabled,
-    String integration
+    String integration,
+    String customScoreUnit,
+    String customEntityType,
+    String icon
 ) {
+    public Category(String name, String displayName, String description, boolean enabled, int sortOrder, String timePeriodEnabled, String integration) {
+        this(name, displayName, description, enabled, sortOrder, timePeriodEnabled, integration, null, null, null);
+    }
+
     public boolean isAllTimeEnabled() {
         return timePeriodEnabled.equalsIgnoreCase("alltime") || timePeriodEnabled.equalsIgnoreCase("both");
     }
@@ -18,6 +25,9 @@ public record Category(
     }
 
     public String getEntityType() {
+        if (customEntityType != null && !customEntityType.isEmpty()) {
+            return customEntityType.toLowerCase();
+        }
         if ("LoveClans".equalsIgnoreCase(integration) || "clan.influence".equalsIgnoreCase(integration) || "clan.wealth".equalsIgnoreCase(integration) || name.toLowerCase().contains("clan")) {
             return "clan";
         }
@@ -29,6 +39,9 @@ public record Category(
     }
 
     public String getScoreUnit() {
+        if (customScoreUnit != null && !customScoreUnit.isEmpty()) {
+            return customScoreUnit;
+        }
         if (isClanCategory()) return "Мощь";
         return switch (name.toLowerCase()) {
             case "kills" -> "Убийств";
@@ -40,5 +53,3 @@ public record Category(
         };
     }
 }
-
-
