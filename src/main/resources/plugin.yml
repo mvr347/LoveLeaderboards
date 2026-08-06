@@ -10,10 +10,13 @@ softdepend: [ PlaceholderAPI, LoveHunt, LoveClans, LoveCore ]
 commands:
   leaderboard:
     description: Open the main leaderboard GUI
-    aliases: [ lb, top ]
+    aliases: [ lb, top, loveleaderboards, топ ]
     permission: loveleaderboards.use
-  leaderboardadmin:
+  loveleaderboardsadmin:
     description: Admin commands for LoveLeaderboards
+    permission: loveleaderboards.admin
+  leaderboardadmin:
+    description: "[Устарело] Используйте /loveleaderboardsadmin"
     aliases: [ lba, lbadmin ]
     permission: loveleaderboards.admin
 

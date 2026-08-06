@@ -10,10 +10,11 @@ LoveLeaderboards предоставляет интерактивный GUI-ли�
 
 | Команда | Алиасы | Описание | Пермишин |
 |---|---|---|---|
-| `/leaderboard` | `lb`, `top` | Открыть главное меню лидерборда | `loveleaderboards.use` |
-| `/leaderboardadmin` | `lba`, `lbadmin` | Администраторские команды | `loveleaderboards.admin` |
+| `/leaderboard` | `lb`, `top`, `loveleaderboards`, `топ` | Открыть главное меню лидерборда | `loveleaderboards.use` |
+| `/loveleaderboardsadmin` | — | Администраторские команды | `loveleaderboards.admin` |
+| `/leaderboardadmin` (устарело) | `lba`, `lbadmin` | Перенаправляет на `/loveleaderboardsadmin` | `loveleaderboards.admin` |
 
-### Подкоманды `/leaderboardadmin`
+### Подкоманды `/loveleaderboardsadmin`
 
 - `reload` — перезагрузить config.yml
 - `reset <metricId>` — сбросить лидерборд по метрике
@@ -238,5 +239,5 @@ Java 21, Paper 1.21. База данных: SQLite.
 
 1. Убедитесь, что источник отправляет события в `LoveCore.StatBus`
 2. Добавьте новую метрику в `config.yml` с уникальным ID
-3. Перезагрузите конфиг командой `/lba reload`
+3. Перезагрузите конфиг командой `/loveleaderboardsadmin reload`
 4. Новая метрика появится в интерфейсе лидерборда

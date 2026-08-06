@@ -19,10 +19,19 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public class LeaderboardAdminCommand implements TabExecutor {
+/**
+ * Единая административная команда плагина: {@code /loveleaderboardsadmin <subcommand>}.
+ * <p>
+ * Раньше все эти подкоманды (reload, stand, add, set и т.д.) жили под именем
+ * {@code /leaderboardadmin}, которое не соответствует принятому в экосистеме Love* стилю
+ * единой родительской admin-команды {@code love<plugin>admin}. Старое имя (и его алиасы
+ * {@code lba}, {@code lbadmin}) оставлено зарегистрированным — см. {@link LeaderboardAdminRedirectCommand} —
+ * и просто перенаправляет игрока сюда, а не пропадает без объяснений.
+ */
+public class LoveLeaderboardsAdminCommand implements TabExecutor {
     private final LoveLeaderboards plugin;
 
-    public LeaderboardAdminCommand(LoveLeaderboards plugin) {
+    public LoveLeaderboardsAdminCommand(LoveLeaderboards plugin) {
         this.plugin = plugin;
     }
 
@@ -90,7 +99,7 @@ public class LeaderboardAdminCommand implements TabExecutor {
             }
             case "removeclan" -> {
                 if (args.length < 2) {
-                    sender.sendMessage("§cИспользование: /lba removeclan <имя_клана/UUID>");
+                    sender.sendMessage("§cИспользование: /loveleaderboardsadmin removeclan <имя_клана/UUID>");
                     return true;
                 }
                 String clanTarget = args[1];
@@ -124,7 +133,7 @@ public class LeaderboardAdminCommand implements TabExecutor {
             }
             case "remove" -> {
                 if (args.length < 3) {
-                    sender.sendMessage("§cИспользование: /lba stand remove <id>");
+                    sender.sendMessage("§cИспользование: /loveleaderboardsadmin stand remove <id>");
                     return;
                 }
                 String id = args[2];
@@ -157,7 +166,7 @@ public class LeaderboardAdminCommand implements TabExecutor {
                     return;
                 }
                 if (args.length < 3) {
-                    player.sendMessage("§cИспользование: /lba stand tp <id>");
+                    player.sendMessage("§cИспользование: /loveleaderboardsadmin stand tp <id>");
                     return;
                 }
                 String id = args[2];
@@ -171,7 +180,7 @@ public class LeaderboardAdminCommand implements TabExecutor {
             }
             case "info" -> {
                 if (args.length < 3) {
-                    sender.sendMessage("§cИспользование: /lba stand info <id>");
+                    sender.sendMessage("§cИспользование: /loveleaderboardsadmin stand info <id>");
                     return;
                 }
                 String id = args[2];
@@ -202,8 +211,8 @@ public class LeaderboardAdminCommand implements TabExecutor {
             return;
         }
         if (args.length < 3) {
-            player.sendMessage("§cИспользование: /lba createstand <alltime|temporary|all> <категория> [место]");
-            player.sendMessage("§7Пример: /lba createstand alltime kills 1");
+            player.sendMessage("§cИспользование: /loveleaderboardsadmin createstand <alltime|temporary|all> <категория> [место]");
+            player.sendMessage("§7Пример: /loveleaderboardsadmin createstand alltime kills 1");
             return;
         }
 
@@ -247,7 +256,7 @@ public class LeaderboardAdminCommand implements TabExecutor {
 
     private void handleRemoveStand(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage("§cИспользование: /lba removestand <id>");
+            sender.sendMessage("§cИспользование: /loveleaderboardsadmin removestand <id>");
             return;
         }
         String id = args[1];
@@ -260,7 +269,7 @@ public class LeaderboardAdminCommand implements TabExecutor {
 
     private void handleAdd(CommandSender sender, String[] args) {
         if (args.length < 5) {
-            sender.sendMessage("§cИспользование: /lba add <player|clan> <ник/id> <категория> <количество>");
+            sender.sendMessage("§cИспользование: /loveleaderboardsadmin add <player|clan> <ник/id> <категория> <количество>");
             return;
         }
         String type = args[1].toLowerCase();
@@ -298,7 +307,7 @@ public class LeaderboardAdminCommand implements TabExecutor {
 
     private void handleSet(CommandSender sender, String[] args) {
         if (args.length < 5) {
-            sender.sendMessage("§cИспользование: /lba set <player|clan> <ник/id> <категория> <значение>");
+            sender.sendMessage("§cИспользование: /loveleaderboardsadmin set <player|clan> <ник/id> <категория> <значение>");
             return;
         }
         String type = args[1].toLowerCase();
@@ -337,29 +346,29 @@ public class LeaderboardAdminCommand implements TabExecutor {
     private void sendHelp(CommandSender sender) {
         sender.sendMessage("§6===========================================");
         sender.sendMessage("§6★ §lLoveLeaderboards Admin Commands §6★");
-        sender.sendMessage("§e/lba createstand <alltime|temporary|all> <категория> [место] §7- Создать NPC/стенд");
-        sender.sendMessage("§e/lba stand list §7- Посмотреть список созданных стендов");
-        sender.sendMessage("§e/lba stand remove <id> §7- Удалить стенд");
-        sender.sendMessage("§e/lba stand tp <id> §7- Телепортироваться к стенду");
-        sender.sendMessage("§e/lba stand info <id> §7- Подробная информация о стенде");
-        sender.sendMessage("§e/lba add <player|clan> <ник/id> <категория> <кол-во> §7- Добавить очки");
-        sender.sendMessage("§e/lba set <player|clan> <ник/id> <категория> <счет> §7- Установить очки");
-        sender.sendMessage("§e/lba reset-monthly §7- Сбросить месячные топы");
-        sender.sendMessage("§e/lba give-rewards §7- Выдать ежемесячные награды");
-        sender.sendMessage("§e/lba cache-clear §7- Очистить кэш в памяти");
-        sender.sendMessage("§e/lba reload §7- Перезагрузить конфиг и стенды");
+        sender.sendMessage("§e/loveleaderboardsadmin createstand <alltime|temporary|all> <категория> [место] §7- Создать NPC/стенд");
+        sender.sendMessage("§e/loveleaderboardsadmin stand list §7- Посмотреть список созданных стендов");
+        sender.sendMessage("§e/loveleaderboardsadmin stand remove <id> §7- Удалить стенд");
+        sender.sendMessage("§e/loveleaderboardsadmin stand tp <id> §7- Телепортироваться к стенду");
+        sender.sendMessage("§e/loveleaderboardsadmin stand info <id> §7- Подробная информация о стенде");
+        sender.sendMessage("§e/loveleaderboardsadmin add <player|clan> <ник/id> <категория> <кол-во> §7- Добавить очки");
+        sender.sendMessage("§e/loveleaderboardsadmin set <player|clan> <ник/id> <категория> <счет> §7- Установить очки");
+        sender.sendMessage("§e/loveleaderboardsadmin reset-monthly §7- Сбросить месячные топы");
+        sender.sendMessage("§e/loveleaderboardsadmin give-rewards §7- Выдать ежемесячные награды");
+        sender.sendMessage("§e/loveleaderboardsadmin cache-clear §7- Очистить кэш в памяти");
+        sender.sendMessage("§e/loveleaderboardsadmin reload §7- Перезагрузить конфиг и стенды");
         sender.sendMessage("§6===========================================");
     }
 
     private void sendStandHelp(CommandSender sender) {
         sender.sendMessage("§6===========================================");
-        sender.sendMessage("§6★ Управление стендами Зала Славы (/lba stand) ★");
-        sender.sendMessage("§e/lba createstand <alltime|temporary|all> <категория> [позиция] §7- Создать стенд (на вашей позиции)");
-        sender.sendMessage("§e/lba stand list §7- Список всех стендов");
-        sender.sendMessage("§e/lba stand info <id> §7- Информация о стенде");
-        sender.sendMessage("§e/lba stand tp <id> §7- Телепорт к стенду");
-        sender.sendMessage("§e/lba stand remove <id> §7- Удалить стенд");
-        sender.sendMessage("§e/lba stand reload §7- Обновить визуалы стендов");
+        sender.sendMessage("§6★ Управление стендами Зала Славы (/loveleaderboardsadmin stand) ★");
+        sender.sendMessage("§e/loveleaderboardsadmin createstand <alltime|temporary|all> <категория> [позиция] §7- Создать стенд (на вашей позиции)");
+        sender.sendMessage("§e/loveleaderboardsadmin stand list §7- Список всех стендов");
+        sender.sendMessage("§e/loveleaderboardsadmin stand info <id> §7- Информация о стенде");
+        sender.sendMessage("§e/loveleaderboardsadmin stand tp <id> §7- Телепорт к стенду");
+        sender.sendMessage("§e/loveleaderboardsadmin stand remove <id> §7- Удалить стенд");
+        sender.sendMessage("§e/loveleaderboardsadmin stand reload §7- Обновить визуалы стендов");
         sender.sendMessage("§6===========================================");
     }
 
