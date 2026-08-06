@@ -7,12 +7,12 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class GuiNavigationManager {
-    private static final Map<UUID, Deque<GuiState>> historyMap = new HashMap<>();
+    private static final Map<UUID, Deque<GuiState>> historyMap = new ConcurrentHashMap<>();
 
     public record GuiState(
         GuiType type,
@@ -45,16 +45,25 @@ public class GuiNavigationManager {
         }
     }
 
+    private static final int MAX_HISTORY_DEPTH = 20;
+
     public static void pushState(Player player, GuiState state) {
-        historyMap.computeIfAbsent(player.getUniqueId(), k -> new ArrayDeque<>()).push(state);
+        if (player == null || state == null) return;
+        Deque<GuiState> history = historyMap.computeIfAbsent(player.getUniqueId(), k -> new ArrayDeque<>());
+        if (history.size() >= MAX_HISTORY_DEPTH) {
+            history.removeLast();
+        }
+        history.push(state);
     }
 
     public static boolean hasHistory(Player player) {
+        if (player == null) return false;
         Deque<GuiState> history = historyMap.get(player.getUniqueId());
         return history != null && !history.isEmpty();
     }
 
     public static boolean goBack(LoveLeaderboards plugin, Player player) {
+        if (player == null) return false;
         Deque<GuiState> history = historyMap.get(player.getUniqueId());
         if (history != null && !history.isEmpty()) {
             GuiState previousState = history.pop();
@@ -65,6 +74,18 @@ public class GuiNavigationManager {
     }
 
     public static void clearHistory(Player player) {
-        historyMap.remove(player.getUniqueId());
+        if (player != null) {
+            historyMap.remove(player.getUniqueId());
+        }
+    }
+
+    public static void clearHistory(UUID uuid) {
+        if (uuid != null) {
+            historyMap.remove(uuid);
+        }
+    }
+
+    public static void clearAllHistory() {
+        historyMap.clear();
     }
 }

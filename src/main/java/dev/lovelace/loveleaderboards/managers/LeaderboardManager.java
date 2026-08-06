@@ -31,24 +31,22 @@ public class LeaderboardManager {
     }
 
     public void updatePlayerScore(UUID uuid, String playerName, String category, double scoreDelta) {
-        if (categoryManager.getCategory(category).isEmpty()) return;
+        if (categoryManager.getCategory(category).isEmpty() || Double.isNaN(scoreDelta) || Double.isInfinite(scoreDelta)) return;
         updateQueue.enqueue(uuid, playerName, "player", category, scoreDelta);
-        invalidateAllCaches();
     }
 
     public void updateClanScore(String clanId, String clanName, String category, double scoreDelta) {
-        if (categoryManager.getCategory(category).isEmpty()) return;
-        updateQueue.enqueue(UUID.nameUUIDFromBytes(clanId.getBytes()).toString(), clanName, "clan", category, scoreDelta);
-        invalidateAllCaches();
+        if (categoryManager.getCategory(category).isEmpty() || Double.isNaN(scoreDelta) || Double.isInfinite(scoreDelta)) return;
+        updateQueue.enqueue(clanId, clanName, "clan", category, scoreDelta);
     }
 
     public void setPlayerScore(UUID uuid, String playerName, String category, double exactScore) {
-        if (categoryManager.getCategory(category).isEmpty()) return;
+        if (categoryManager.getCategory(category).isEmpty() || Double.isNaN(exactScore) || Double.isInfinite(exactScore)) return;
         if (!Bukkit.isPrimaryThread()) {
             databaseManager.setScore("player", uuid.toString(), playerName, category, exactScore);
             invalidateAllCaches();
         } else {
-            Bukkit.getAsyncScheduler().runNow(plugin, task -> {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 databaseManager.setScore("player", uuid.toString(), playerName, category, exactScore);
                 invalidateAllCaches();
             });
@@ -56,14 +54,13 @@ public class LeaderboardManager {
     }
 
     public void setClanScore(String clanId, String clanName, String category, double exactScore) {
-        if (categoryManager.getCategory(category).isEmpty()) return;
-        String entityId = UUID.nameUUIDFromBytes(clanId.getBytes()).toString();
+        if (categoryManager.getCategory(category).isEmpty() || Double.isNaN(exactScore) || Double.isInfinite(exactScore)) return;
         if (!Bukkit.isPrimaryThread()) {
-            databaseManager.setScore("clan", entityId, clanName, category, exactScore);
+            databaseManager.setScore("clan", clanId, clanName, category, exactScore);
             invalidateAllCaches();
         } else {
-            Bukkit.getAsyncScheduler().runNow(plugin, task -> {
-                databaseManager.setScore("clan", entityId, clanName, category, exactScore);
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                databaseManager.setScore("clan", clanId, clanName, category, exactScore);
                 invalidateAllCaches();
             });
         }
@@ -84,12 +81,26 @@ public class LeaderboardManager {
             return filled;
         } else {
             // Return empty while fetching to not block main thread (PAPI)
-            Bukkit.getAsyncScheduler().runNow(plugin, task -> {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 List<LeaderboardEntry> top = databaseManager.getTopByCategory(category, entityType, timePeriod, limit);
                 List<LeaderboardEntry> filled = fillEmptyRanks(top, limit, entityType, category);
                 cacheManager.put(cacheKey, filled);
             });
             return new ArrayList<>();
+        }
+    }
+
+    public void removeClan(String clanId, String clanName) {
+        if (!Bukkit.isPrimaryThread()) {
+            if (clanId != null) databaseManager.removeEntity("clan", clanId);
+            if (clanName != null) databaseManager.removeEntity("clan", clanName);
+            invalidateAllCaches();
+        } else {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                if (clanId != null) databaseManager.removeEntity("clan", clanId);
+                if (clanName != null) databaseManager.removeEntity("clan", clanName);
+                invalidateAllCaches();
+            });
         }
     }
 
@@ -99,7 +110,7 @@ public class LeaderboardManager {
                 databaseManager.ensurePlayerExists(uuid, playerName, cat.name());
             }
         } else {
-            Bukkit.getAsyncScheduler().runNow(plugin, task -> {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 for (dev.lovelace.loveleaderboards.models.Category cat : categoryManager.getAllCategories()) {
                     databaseManager.ensurePlayerExists(uuid, playerName, cat.name());
                 }
@@ -112,7 +123,11 @@ public class LeaderboardManager {
     }
 
     public Optional<PlayerStats> getPlayerStats(UUID uuid, String category, String timePeriodKey) {
-        String cacheKey = uuid.toString() + ":" + category + ":" + timePeriodKey;
+        return getEntityStats("player", uuid.toString(), category, timePeriodKey);
+    }
+
+    public Optional<PlayerStats> getEntityStats(String entityType, String entityId, String category, String timePeriodKey) {
+        String cacheKey = entityType + ":" + entityId + ":" + category + ":" + timePeriodKey;
         Optional<PlayerStats> cached = statsCache.get(cacheKey);
         if (cached.isPresent()) {
             if (cached.get().playerName().equals("Unknown")) return Optional.empty();
@@ -120,20 +135,32 @@ public class LeaderboardManager {
         }
 
         if (!Bukkit.isPrimaryThread()) {
-            Optional<PlayerStats> fetched = databaseManager.getPlayerStats(uuid, category, timePeriodKey);
+            Optional<PlayerStats> fetched = databaseManager.getEntityStats(entityType, entityId, category, timePeriodKey);
             if (fetched.isPresent()) {
                 statsCache.put(cacheKey, fetched.get());
             } else {
-                statsCache.put(cacheKey, new PlayerStats(uuid, "Unknown", 0, 0)); // Cache miss
+                UUID id;
+                try {
+                    id = UUID.fromString(entityId);
+                } catch (Exception e) {
+                    id = UUID.nameUUIDFromBytes(entityId.getBytes());
+                }
+                statsCache.put(cacheKey, new PlayerStats(id, "Unknown", 0, 0));
             }
             return fetched;
         } else {
-            Bukkit.getAsyncScheduler().runNow(plugin, task -> {
-                Optional<PlayerStats> fetched = databaseManager.getPlayerStats(uuid, category, timePeriodKey);
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                Optional<PlayerStats> fetched = databaseManager.getEntityStats(entityType, entityId, category, timePeriodKey);
                 if (fetched.isPresent()) {
                     statsCache.put(cacheKey, fetched.get());
                 } else {
-                    statsCache.put(cacheKey, new PlayerStats(uuid, "Unknown", 0, 0));
+                    UUID id;
+                    try {
+                        id = UUID.fromString(entityId);
+                    } catch (Exception e) {
+                        id = UUID.nameUUIDFromBytes(entityId.getBytes());
+                    }
+                    statsCache.put(cacheKey, new PlayerStats(id, "Unknown", 0, 0));
                 }
             });
             return Optional.empty();
@@ -145,9 +172,18 @@ public class LeaderboardManager {
     }
 
     public Comparison compareWithPlayer(UUID uuid1, String name1, UUID uuid2, String name2, String category, String timePeriodKey) {
-        Optional<PlayerStats> stats1 = getPlayerStats(uuid1, category, timePeriodKey);
-        Optional<PlayerStats> stats2 = getPlayerStats(uuid2, category, timePeriodKey);
-        
+        return compareEntities("player", uuid1.toString(), name1, uuid2.toString(), name2, category, timePeriodKey);
+    }
+
+    public Comparison compareEntities(String entityType, String id1Str, String name1, String id2Str, String name2, String category, String timePeriodKey) {
+        Optional<PlayerStats> stats1 = getEntityStats(entityType, id1Str, category, timePeriodKey);
+        Optional<PlayerStats> stats2 = getEntityStats(entityType, id2Str, category, timePeriodKey);
+
+        UUID uuid1;
+        try { uuid1 = UUID.fromString(id1Str); } catch (Exception e) { uuid1 = UUID.nameUUIDFromBytes(id1Str.getBytes()); }
+        UUID uuid2;
+        try { uuid2 = UUID.fromString(id2Str); } catch (Exception e) { uuid2 = UUID.nameUUIDFromBytes(id2Str.getBytes()); }
+
         return new Comparison(
             uuid1, name1, stats1.orElse(new PlayerStats(uuid1, name1, 0, 0)),
             uuid2, name2, stats2.orElse(new PlayerStats(uuid2, name2, 0, 0)),

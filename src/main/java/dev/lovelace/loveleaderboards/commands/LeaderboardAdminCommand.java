@@ -44,31 +44,64 @@ public class LeaderboardAdminCommand implements TabExecutor {
             case "stand" -> handleStandSubcommand(sender, args);
             case "reload" -> {
                 plugin.reloadConfig();
+                if (plugin.getHeadManager() != null) {
+                    plugin.getHeadManager().reloadHeads();
+                }
                 plugin.getCategoryManager().loadCategories();
-                plugin.getHallOfFameManager().updateAllStands();
-                sender.sendMessage("§a[LoveLeaderboards] Конфигурация и стенды Зала Славы перезагружены.");
+                if (plugin.getLeaderboardManager() != null) {
+                    plugin.getLeaderboardManager().invalidateAllCaches();
+                }
+                dev.lovelace.loveleaderboards.utils.ItemBuilder.clearCaches();
+                dev.lovelace.loveleaderboards.gui.GuiNavigationManager.clearAllHistory();
+                if (plugin.getHallOfFameManager() != null) {
+                    plugin.getHallOfFameManager().updateAllStands();
+                }
+                sender.sendMessage("§a[LoveLeaderboards] Конфигурация (config.yml и heads.yml), категории, кэши и стенды Зала Славы успешно перезагружены.");
             }
             case "add" -> handleAdd(sender, args);
             case "set" -> handleSet(sender, args);
             case "createstand" -> handleCreateStand(sender, args);
             case "removestand" -> handleRemoveStand(sender, args);
             case "reloadstands" -> {
-                plugin.getHallOfFameManager().updateAllStands();
+                if (plugin.getHallOfFameManager() != null) {
+                    plugin.getHallOfFameManager().updateAllStands();
+                }
                 sender.sendMessage("§a[LoveLeaderboards] Стенды Зала Славы обновлены.");
             }
             case "cache-clear" -> {
-                plugin.getLeaderboardManager().invalidateAllCaches();
-                sender.sendMessage("§a[LoveLeaderboards] Кэш лидербордов очищен.");
+                if (plugin.getLeaderboardManager() != null) {
+                    plugin.getLeaderboardManager().invalidateAllCaches();
+                }
+                dev.lovelace.loveleaderboards.utils.ItemBuilder.clearCaches();
+                dev.lovelace.loveleaderboards.gui.GuiNavigationManager.clearAllHistory();
+                sender.sendMessage("§a[LoveLeaderboards] Все кэши лидербордов и интерфейсов очищены.");
             }
             case "reset-monthly" -> {
-                Bukkit.getAsyncScheduler().runNow(plugin, task -> {
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                     plugin.getDatabaseManager().resetMonthlyLeaderboards();
                     sender.sendMessage("§a[LoveLeaderboards] Месячные лидерборды сброшены.");
                 });
             }
             case "give-rewards" -> {
-                plugin.getRewardsManager().issueMonthlyRewards();
-                sender.sendMessage("§a[LoveLeaderboards] Ежемесячные награды выданы.");
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    plugin.getRewardsManager().issueMonthlyRewards();
+                    sender.sendMessage("§a[LoveLeaderboards] Ежемесячные награды выданы.");
+                });
+            }
+            case "removeclan" -> {
+                if (args.length < 2) {
+                    sender.sendMessage("§cИспользование: /lba removeclan <имя_клана/UUID>");
+                    return true;
+                }
+                String clanTarget = args[1];
+                plugin.getLeaderboardManager().removeClan(clanTarget, clanTarget);
+                sender.sendMessage("§a[LoveLeaderboards] Клан '" + clanTarget + "' удален из базы данных и кэша лидербордов.");
+            }
+            case "cleanup-clans" -> {
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    plugin.getLeaderboardManager().invalidateAllCaches();
+                    sender.sendMessage("§a[LoveLeaderboards] Очистка распущенных кланов выполнена.");
+                });
             }
             default -> sendHelp(sender);
         }
@@ -236,6 +269,10 @@ public class LeaderboardAdminCommand implements TabExecutor {
         double amount;
         try {
             amount = Double.parseDouble(args[4]);
+            if (Double.isNaN(amount) || Double.isInfinite(amount)) {
+                sender.sendMessage("§cЗначение не может быть NaN или бесконечностью!");
+                return;
+            }
         } catch (NumberFormatException e) {
             sender.sendMessage("§cНекорректное значение количества!");
             return;
@@ -270,6 +307,10 @@ public class LeaderboardAdminCommand implements TabExecutor {
         double score;
         try {
             score = Double.parseDouble(args[4]);
+            if (Double.isNaN(score) || Double.isInfinite(score)) {
+                sender.sendMessage("§cЗначение не может быть NaN или бесконечностью!");
+                return;
+            }
         } catch (NumberFormatException e) {
             sender.sendMessage("§cНекорректное значение счета!");
             return;

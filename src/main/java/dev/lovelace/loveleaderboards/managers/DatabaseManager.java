@@ -7,14 +7,16 @@ import dev.lovelace.loveleaderboards.models.PlayerStats;
 
 import java.io.File;
 import java.sql.*;
-import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.logging.Level;
 
 public class DatabaseManager {
     private final LoveLeaderboards plugin;
+    private final Object dbLock = new Object();
     private Connection connection;
 
     public DatabaseManager(LoveLeaderboards plugin) {
@@ -22,15 +24,17 @@ public class DatabaseManager {
     }
 
     public void initialize() {
-        try {
-            File dbFile = new File(plugin.getDataFolder(), "leaderboards.db");
-            if (!plugin.getDataFolder().exists()) {
-                plugin.getDataFolder().mkdirs();
+        synchronized (dbLock) {
+            try {
+                File dbFile = new File(plugin.getDataFolder(), "leaderboards.db");
+                if (!plugin.getDataFolder().exists()) {
+                    plugin.getDataFolder().mkdirs();
+                }
+                connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+                createTables();
+            } catch (SQLException e) {
+                plugin.getLogger().severe("DB init failed: " + e.getMessage());
             }
-            connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
-            createTables();
-        } catch (SQLException e) {
-            plugin.getLogger().severe("DB init failed: " + e.getMessage());
         }
     }
 
@@ -72,47 +76,59 @@ public class DatabaseManager {
     }
 
     public void batchUpdateScores(List<LeaderboardUpdate> batch) {
-        if (batch.isEmpty()) return;
+        if (batch == null || batch.isEmpty()) return;
 
         String upsertSql = "INSERT INTO leaderboard_entries (entity_type, entity_id, entity_name, category, time_period, score, updated_at) " +
                            "VALUES (?, ?, ?, ?, ?, ?, ?) " +
                            "ON CONFLICT(entity_type, entity_id, category, time_period) DO UPDATE SET score = score + excluded.score, updated_at = excluded.updated_at";
 
-        try (PreparedStatement ps = connection.prepareStatement(upsertSql)) {
-            connection.setAutoCommit(false);
-            long currentTime = System.currentTimeMillis() / 1000;
-            
-            String allTimeKey = dev.lovelace.loveleaderboards.models.TimePeriod.ALL_TIME.getDbKey();
-            String monthlyKey = dev.lovelace.loveleaderboards.models.TimePeriod.MONTHLY.getDbKey();
-            String weeklyKey = dev.lovelace.loveleaderboards.models.TimePeriod.WEEKLY.getDbKey();
-            String todayKey = dev.lovelace.loveleaderboards.models.TimePeriod.TODAY.getDbKey();
+        synchronized (dbLock) {
+            if (connection == null) return;
+            try (PreparedStatement ps = connection.prepareStatement(upsertSql)) {
+                connection.setAutoCommit(false);
+                long currentTime = System.currentTimeMillis() / 1000;
+                
+                String allTimeKey = dev.lovelace.loveleaderboards.models.TimePeriod.ALL_TIME.getDbKey();
+                String monthlyKey = dev.lovelace.loveleaderboards.models.TimePeriod.MONTHLY.getDbKey();
+                String weeklyKey = dev.lovelace.loveleaderboards.models.TimePeriod.WEEKLY.getDbKey();
+                String todayKey = dev.lovelace.loveleaderboards.models.TimePeriod.TODAY.getDbKey();
 
-            String[] periods = {allTimeKey, monthlyKey, weeklyKey, todayKey};
+                String[] periods = {allTimeKey, monthlyKey, weeklyKey, todayKey};
 
-            for (LeaderboardUpdate update : batch) {
-                for (String period : periods) {
-                    ps.setString(1, update.entityType());
-                    ps.setString(2, update.entityId());
-                    ps.setString(3, update.entityName());
-                    ps.setString(4, update.category());
-                    ps.setString(5, period);
-                    ps.setDouble(6, update.score());
-                    ps.setLong(7, currentTime);
-                    ps.addBatch();
+                for (LeaderboardUpdate update : batch) {
+                    if (update == null || Double.isNaN(update.score()) || Double.isInfinite(update.score())) continue;
+                    for (String period : periods) {
+                        ps.setString(1, update.entityType());
+                        ps.setString(2, update.entityId());
+                        ps.setString(3, update.entityName());
+                        ps.setString(4, update.category());
+                        ps.setString(5, period);
+                        ps.setDouble(6, update.score());
+                        ps.setLong(7, currentTime);
+                        ps.addBatch();
+                    }
+                }
+
+                ps.executeBatch();
+                connection.commit();
+                connection.setAutoCommit(true);
+
+            } catch (SQLException e) {
+                plugin.getLogger().warning("Batch update failed: " + e.getMessage());
+                try {
+                    if (connection != null && !connection.getAutoCommit()) {
+                        connection.rollback();
+                        connection.setAutoCommit(true);
+                    }
+                } catch (SQLException rollbackEx) {
+                    plugin.getLogger().log(Level.FINE, "Failed to rollback transaction", rollbackEx);
                 }
             }
-
-            ps.executeBatch();
-            connection.commit();
-            connection.setAutoCommit(true);
-
-        } catch (SQLException e) {
-            plugin.getLogger().warning("Batch update failed: " + e.getMessage());
-            try { connection.rollback(); } catch (SQLException ignored) {}
         }
     }
 
     public void ensurePlayerExists(UUID uuid, String playerName, String category) {
+        if (uuid == null || category == null) return;
         String sql = "INSERT OR IGNORE INTO leaderboard_entries (entity_type, entity_id, entity_name, category, time_period, score, updated_at) " +
                      "VALUES ('player', ?, ?, ?, ?, 0.0, ?)";
         long currentTime = System.currentTimeMillis() / 1000;
@@ -123,22 +139,26 @@ public class DatabaseManager {
             dev.lovelace.loveleaderboards.models.TimePeriod.TODAY.getDbKey()
         };
 
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            for (String period : periods) {
-                ps.setString(1, uuid.toString());
-                ps.setString(2, playerName);
-                ps.setString(3, category);
-                ps.setString(4, period);
-                ps.setLong(5, currentTime);
-                ps.addBatch();
+        synchronized (dbLock) {
+            if (connection == null) return;
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                for (String period : periods) {
+                    ps.setString(1, uuid.toString());
+                    ps.setString(2, playerName != null ? playerName : "Unknown");
+                    ps.setString(3, category);
+                    ps.setString(4, period);
+                    ps.setLong(5, currentTime);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            } catch (SQLException e) {
+                plugin.getLogger().warning("Failed to ensure player exists in DB: " + e.getMessage());
             }
-            ps.executeBatch();
-        } catch (SQLException e) {
-            plugin.getLogger().warning("Failed to ensure player exists in DB: " + e.getMessage());
         }
     }
 
     public void setScore(String entityType, String entityId, String entityName, String category, double exactScore) {
+        if (entityType == null || entityId == null || category == null || Double.isNaN(exactScore) || Double.isInfinite(exactScore)) return;
         String sql = "INSERT INTO leaderboard_entries (entity_type, entity_id, entity_name, category, time_period, score, updated_at) " +
                      "VALUES (?, ?, ?, ?, ?, ?, ?) " +
                      "ON CONFLICT(entity_type, entity_id, category, time_period) DO UPDATE SET score = excluded.score, updated_at = excluded.updated_at";
@@ -150,24 +170,29 @@ public class DatabaseManager {
             dev.lovelace.loveleaderboards.models.TimePeriod.TODAY.getDbKey()
         };
 
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            for (String period : periods) {
-                ps.setString(1, entityType);
-                ps.setString(2, entityId);
-                ps.setString(3, entityName);
-                ps.setString(4, category);
-                ps.setString(5, period);
-                ps.setDouble(6, exactScore);
-                ps.setLong(7, currentTime);
-                ps.addBatch();
+        synchronized (dbLock) {
+            if (connection == null) return;
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                for (String period : periods) {
+                    ps.setString(1, entityType);
+                    ps.setString(2, entityId);
+                    ps.setString(3, entityName != null ? entityName : "Unknown");
+                    ps.setString(4, category);
+                    ps.setString(5, period);
+                    ps.setDouble(6, exactScore);
+                    ps.setLong(7, currentTime);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            } catch (SQLException e) {
+                plugin.getLogger().warning("Failed to set score in DB: " + e.getMessage());
             }
-            ps.executeBatch();
-        } catch (SQLException e) {
-            plugin.getLogger().warning("Failed to set score in DB: " + e.getMessage());
         }
     }
 
     public List<LeaderboardEntry> getTopByCategory(String category, String entityType, String timePeriod, int limit) {
+        if (category == null || entityType == null || timePeriod == null) return new ArrayList<>();
+
         String query = """
             SELECT entity_id, entity_name, score, updated_at,
                    ROW_NUMBER() OVER (ORDER BY score DESC) as rank
@@ -177,31 +202,120 @@ public class DatabaseManager {
             LIMIT ?
         """;
 
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ps.setString(1, category);
-            ps.setString(2, entityType);
-            ps.setString(3, timePeriod);
-            ps.setInt(4, limit);
+        List<LeaderboardEntry> entries = new ArrayList<>();
 
-            ResultSet rs = ps.executeQuery();
-            List<LeaderboardEntry> entries = new ArrayList<>();
+        synchronized (dbLock) {
+            if (connection == null) return entries;
+            try (PreparedStatement ps = connection.prepareStatement(query)) {
+                ps.setString(1, category);
+                ps.setString(2, entityType);
+                ps.setString(3, timePeriod);
+                ps.setInt(4, Math.max(1, limit));
 
-            while (rs.next()) {
-                entries.add(new LeaderboardEntry(
-                    entityType,
-                    rs.getString("entity_id"),
-                    rs.getString("entity_name"),
-                    rs.getInt("rank"),
-                    rs.getDouble("score"),
-                    rs.getLong("updated_at")
-                ));
+                try (ResultSet rs = ps.executeQuery()) {
+                    int currentRank = 1;
+                    while (rs.next()) {
+                        String eId = rs.getString("entity_id");
+                        String eName = rs.getString("entity_name");
+
+                        if ("clan".equalsIgnoreCase(entityType) && !isClanActive(eId, eName)) {
+                            continue;
+                        }
+
+                        entries.add(new LeaderboardEntry(
+                            entityType,
+                            eId,
+                            eName != null ? eName : "Unknown",
+                            currentRank++,
+                            rs.getDouble("score"),
+                            rs.getLong("updated_at")
+                        ));
+                    }
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().warning("getTopByCategory failed: " + e.getMessage());
+                return new ArrayList<>();
+            }
+        }
+
+        return entries;
+    }
+
+    public boolean isClanActive(String entityId, String entityName) {
+        if (!plugin.getServer().getPluginManager().isPluginEnabled("LoveClans")) {
+            return true;
+        }
+        try {
+            Class<?> apiClass = Class.forName("me.lovelace.loveclans.api.LoveClansAPI");
+            Object api = apiClass.getMethod("getInstance").invoke(null);
+            
+            if (entityId != null) {
+                try {
+                    UUID uuid = UUID.fromString(entityId);
+                    Object clanOpt = apiClass.getMethod("getClanById", UUID.class).invoke(api, uuid);
+                    if (clanOpt instanceof Optional<?> opt && opt.isPresent()) {
+                        return true;
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.FINE, "Failed to check clan by UUID " + entityId, e);
+                }
             }
 
-            return entries;
+            if (entityName != null && !entityName.isEmpty()) {
+                try {
+                    Object clanOptTag = apiClass.getMethod("getClanByTag", String.class).invoke(api, entityName);
+                    if (clanOptTag instanceof Optional<?> opt && opt.isPresent()) {
+                        return true;
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.FINE, "Failed to check clan by tag " + entityName, e);
+                }
 
-        } catch (SQLException e) {
-            plugin.getLogger().warning("getTopByCategory failed: " + e.getMessage());
-            return new ArrayList<>();
+                try {
+                    Object clansObj = apiClass.getMethod("getAllClans").invoke(api);
+                    if (clansObj instanceof Collection<?> clans) {
+                        for (Object clan : clans) {
+                            String name = null;
+                            String tag = null;
+                            try {
+                                Object n = clan.getClass().getMethod("name").invoke(clan);
+                                if (n != null) name = n.toString();
+                            } catch (Exception ignored) {}
+                            try {
+                                Object t = clan.getClass().getMethod("tag").invoke(clan);
+                                if (t != null) tag = t.toString();
+                            } catch (Exception ignored) {}
+                            if (entityName.equalsIgnoreCase(name) || entityName.equalsIgnoreCase(tag)) {
+                                return true;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.FINE, "Failed to check clan in getAllClans", e);
+                }
+            }
+
+            return false;
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.FINE, "LoveClans API call failed, defaulting to active clan", t);
+            return true;
+        }
+    }
+
+    public int removeEntity(String entityType, String entityId) {
+        if (entityType == null || entityId == null) return 0;
+        String sql = "DELETE FROM leaderboard_entries WHERE entity_type = ? AND (entity_id = ? OR entity_name = ?)";
+        synchronized (dbLock) {
+            if (connection == null) return 0;
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setString(1, entityType);
+                ps.setString(2, entityId);
+                ps.setString(3, entityId);
+                return ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().warning("Failed to remove entity from DB: " + e.getMessage());
+                return 0;
+            }
         }
     }
 
@@ -210,67 +324,79 @@ public class DatabaseManager {
     }
 
     public Optional<PlayerStats> getPlayerStats(UUID uuid, String category, String timePeriod) {
+        if (uuid == null) return Optional.empty();
+        return getEntityStats("player", uuid.toString(), category, timePeriod);
+    }
+
+    public Optional<PlayerStats> getEntityStats(String entityType, String entityId, String category, String timePeriod) {
+        if (entityType == null || entityId == null || category == null || timePeriod == null) return Optional.empty();
+
         String query = """
             SELECT rank, score, entity_name FROM (
                 SELECT entity_id, score, entity_name,
                        ROW_NUMBER() OVER (ORDER BY score DESC) as rank
                 FROM leaderboard_entries
-                WHERE category = ? AND time_period = ? AND entity_type = 'player'
-            ) WHERE entity_id = ?
+                WHERE category = ? AND time_period = ? AND entity_type = ?
+            ) WHERE entity_id = ? OR entity_name = ?
         """;
 
+        synchronized (dbLock) {
+            if (connection == null) return Optional.empty();
+            try (PreparedStatement ps = connection.prepareStatement(query)) {
+                ps.setString(1, category);
+                ps.setString(2, timePeriod);
+                ps.setString(3, entityType);
+                ps.setString(4, entityId);
+                ps.setString(5, entityId);
 
-        try (PreparedStatement ps = connection.prepareStatement(query)) {
-            ps.setString(1, category);
-            ps.setString(2, timePeriod);
-            ps.setString(3, uuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        UUID id;
+                        try {
+                            id = UUID.fromString(entityId);
+                        } catch (Exception e) {
+                            id = UUID.nameUUIDFromBytes(entityId.getBytes());
+                        }
+                        String name = rs.getString("entity_name");
+                        return Optional.of(new PlayerStats(
+                            id,
+                            name != null ? name : "Unknown",
+                            rs.getInt("rank"),
+                            rs.getDouble("score")
+                        ));
+                    }
+                }
 
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return Optional.of(new PlayerStats(
-                    uuid,
-                    rs.getString("entity_name"),
-                    rs.getInt("rank"),
-                    rs.getDouble("score")
-                ));
+            } catch (SQLException e) {
+                plugin.getLogger().warning("getEntityStats failed: " + e.getMessage());
             }
-
-        } catch (SQLException e) {
-            plugin.getLogger().warning("getPlayerStats failed: " + e.getMessage());
         }
 
         return Optional.empty();
     }
 
     public void resetMonthlyLeaderboards() {
-        // We delete data that is older than 1 month (i.e. 2 months old)
-        // so that last month's data remains available for rewards and history.
-        LocalDate twoMonthsAgo = LocalDate.now().minusMonths(2);
-        String oldMonth = String.format("%04d-%02d", twoMonthsAgo.getYear(), twoMonthsAgo.getMonthValue());
-
-        try (PreparedStatement ps = connection.prepareStatement(
-                "DELETE FROM leaderboard_entries WHERE time_period = ?")) {
-            ps.setString(1, oldMonth);
-            ps.executeUpdate();
-            plugin.getLogger().info("Cleaned up old monthly leaderboards for: " + oldMonth);
-        } catch (SQLException e) {
-            plugin.getLogger().severe("resetMonthly failed: " + e.getMessage());
+        synchronized (dbLock) {
+            if (connection == null) return;
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "UPDATE leaderboard_entries SET score = 0.0 WHERE time_period = 'monthly'")) {
+                int resetCount = ps.executeUpdate();
+                plugin.getLogger().info("Reset monthly leaderboards scores for " + resetCount + " entries.");
+            } catch (SQLException e) {
+                plugin.getLogger().severe("resetMonthly failed: " + e.getMessage());
+            }
         }
     }
 
-    private String getCurrentMonthString() {
-        LocalDate now = LocalDate.now();
-        return String.format("%04d-%02d", now.getYear(), now.getMonthValue());
-    }
-
-    private String getLastMonthString() {
-        LocalDate last = LocalDate.now().minusMonths(1);
-        return String.format("%04d-%02d", last.getYear(), last.getMonthValue());
-    }
-
     public void close() {
-        try {
-            if (connection != null && !connection.isClosed()) connection.close();
-        } catch (SQLException ignored) {}
+        synchronized (dbLock) {
+            try {
+                if (connection != null && !connection.isClosed()) {
+                    connection.close();
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().warning("Error closing database connection: " + e.getMessage());
+            }
+        }
     }
 }

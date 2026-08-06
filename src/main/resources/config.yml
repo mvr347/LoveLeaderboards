@@ -14,14 +14,16 @@ categories:
     enabled: true
     sort-order: 1
     time-period: 'both'  # 'alltime', 'monthly', или 'both'
+    head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0="
     
   bounty-completed:
     display-name: '&6💰 Бонусы'
-    description: 'Выполненные бонусы от LoveHunt'
+    description: 'Выполненные бонуса от LoveHunt'
     enabled: true
     sort-order: 2
     time-period: 'both'
     integration: 'bounties.completed'  # Метрика StatBus ядра, см. dev.lovelace.lovecore.api.stats.Metrics
+    head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzE1NDQxOWVlMzc4NDg4NDllNDBmYzNmZTdkZGI3ODI0NGE3MzY4NDlhN2E0MWU4ZTYxOTdmYjhiOTFmNDNlIn19fQ=="
 
   contracts-completed:
     display-name: '&6📜 Контракты'
@@ -30,6 +32,7 @@ categories:
     sort-order: 3
     time-period: 'both'
     integration: 'contracts.completed'
+    head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0="
 
   clan-power:
     display-name: '&6👑 Мощь Клана'
@@ -38,6 +41,7 @@ categories:
     sort-order: 4
     time-period: 'alltime'  # Только всё время, не месячный топ
     integration: 'clan.influence'
+    head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0="
 
   hunter-rating:
     display-name: '&6🎯 Рейтинг охотника'
@@ -46,6 +50,7 @@ categories:
     sort-order: 5
     time-period: 'alltime'  # Рейтинг — текущее состояние, месячный срез для него бессмысленен
     integration: 'hunter.rating'
+    head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM3MzZWQ3In19fQ=="
 
   best-brewer:
     display-name: '&6🍺 Мастер пивоварения'
@@ -54,6 +59,7 @@ categories:
     sort-order: 6
     time-period: 'alltime'
     integration: 'brewer.skill'
+    head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19"
 
   clan-wealth:
     display-name: '&6💰 Богатейший клан'
@@ -62,11 +68,9 @@ categories:
     sort-order: 7
     time-period: 'alltime'
     integration: 'clan.wealth'
+    head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTVlYjNlODFiMjFhMmQ5NDFjNGFhMjExMmNlNWQxM2NmOGI1YjRjODZkMTViZmZlM2Q2NWYyNDViM3NmYiJ9fX0="
 
 # ====== ИНТЕГРАЦИИ ======
-# Категории выше наполняются автоматически через LoveCore.StatBus, пока LoveCore установлен
-# (softdepend) — отдельных переключателей на каждый источник метрик больше не нужно, значение
-# 'integration' категории — это просто имя метрики из dev.lovelace.lovecore.api.stats.Metrics.
 
 integrations:
   placeholder-api:
@@ -82,7 +86,6 @@ performance:
   batch-update-size: 1000  # макс элементов в одном батче
 
 # ====== СБРОС МЕСЯЧНЫХ ТОПОВ ======
-# Автоматический сброс в конце месяца
 
 monthly-reset:
   enabled: true
@@ -91,8 +94,6 @@ monthly-reset:
   minute: 0
 
 # ====== НАГРАДЫ =====
-# Выдаются только игрокам в конце месяца (команда или таск)
-# Кланы НЕ получают награды
 
 rewards:
   enabled: true
@@ -130,14 +131,12 @@ rewards:
           - 'title %player% title &6&lМастер Охоты'
     
     clan-power:
-      # Кланы НЕ получают награды (по ТЗ)
-      # Но можно добавить команды для всех членов клана:
       rank-1:
         display-name: '&6👑 Мощнейший клан'
         commands:
           - 'broadcast &6Клан %clan% стал мощнейшим! Мощь: %score%'
 
-# ====== GUI ======
+# ====== GUI И КНОПКИ ======
 
 gui:
   main:
@@ -160,13 +159,40 @@ gui:
     size: 27
     title: '&6⚔️ Сравнение'
 
-# ====== СООБЩЕНИЯ (lang.yml или здесь) ======
+  # Настройки слота 0 (Профиль игрока / Клана)
+  slot-0:
+    player:
+      head-b64: ""  # Оставьте пустым для отображения собственного скина игрока, или вставьте Base64
+      name: "&e%player_name%"
+      lore:
+        - ""
+        - "&7Категория: &f%category_name%"
+        - "&7Период: %time_period%"
+        - ""
+        - "&7Ваше место: &e#%rank%"
+        - "&7%unit%: &a%score%"
+        - ""
+        - "&a⭐ Это вы!"
+        - "&a▶ Нажмите, чтобы открыть статистику"
+  # Настройки свободных мест в лидерборде
+  empty-slot:
+    name: "&7#%rank% &8Свободное место"
+    lore:
+      - ""
+      - "&7Позиция: &f#%rank%"
+      - "&7Статус: &8Пусто"
+
+# Все Base64 текстуры голов (для кнопок, категорий и спец-слотов)
+# перенесены и структурированы в отдельном файле: heads.yml
+
+# ====== СООБЩЕНИЯ ======
 
 messages:
   no-permission: '&cУ вас нет прав на эту команду!'
-  player-not-found: '&cИгрок &f%player% &cнё найден!'
+  player-not-found: '&cИгрок &f%player% &cне найден!'
   no-stats: '&cЭтот игрок ещё не в топе!'
   comparison-self: '&cНельзя сравнивать с самим собой!'
+  no-clan: '&cУ вас ещё нет клана!'
   rewards-given: '&aВознаграждения выданы за &f%month%!'
   monthly-reset: '&aМесячный топ сброшен!'
 
@@ -174,12 +200,11 @@ messages:
 hall-of-fame:
   enabled: true
   
-  # Настройки визуальной голограммы над NPC
   hologram:
     height-offset: 2.3
     shadowed: true
     see-through: false
-    billboard: "CENTER"  # CENTER, FIXED, VERTICAL, HORIZONTAL
+    billboard: "CENTER"
     empty-player-name: "Свободно"
     empty-score-text: "0"
     lines:
@@ -191,21 +216,18 @@ hall-of-fame:
       - "&7(Shift + ПКМ — сменить период)"
       - "&7(ПКМ — открыть меню)"
 
-  # Названия временных периодов
   periods:
     alltime: "За всё время"
     monthly: "За месяц"
     weekly: "За неделю"
     yearly: "За год"
 
-  # Настройки Citizens NPC и скинов
   npc:
     update-skin: true
     fallback-skin: "Steve"
     empty-name: "&7[Свободно]"
     name-format: "&e%player_name%"
 
-  # Настройки взаимодействия, звуков и сообщений
   interaction:
     shift-click-message: "&a[Зал Славы] &fПериод отображения переключен на: &e%period%"
     shift-click-sound: "BLOCK_NOTE_BLOCK_PLING"

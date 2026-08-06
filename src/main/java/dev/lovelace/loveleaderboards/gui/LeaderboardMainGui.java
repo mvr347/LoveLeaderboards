@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class LeaderboardMainGui extends BaseGui {
     private final LoveLeaderboards plugin;
@@ -62,7 +63,7 @@ public class LeaderboardMainGui extends BaseGui {
         this.viewer = viewer;
         this.currentCategory = category;
         this.currentPeriod = period;
-        
+
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(category);
         String resolvedType = entityType != null ? entityType : catOpt.map(Category::getEntityType).orElse("player");
         this.entityType = resolvedType;
@@ -84,9 +85,8 @@ public class LeaderboardMainGui extends BaseGui {
 
         // Slot 3: Entity Type Switcher (Players vs Clans)
         boolean isClanView = "clan".equalsIgnoreCase(entityType);
-        String typeB64 = isClanView
-            ? "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0="
-            : "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM2MzZWQ3In19fQ==";
+        String typeB64 = getButtonHead(plugin, isClanView ? "type-clan" : "type-player");
+
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(typeB64)
             .name("&eТип: &f" + (isClanView ? "👑 Кланы" : "👥 Игроки"))
@@ -97,8 +97,8 @@ public class LeaderboardMainGui extends BaseGui {
                 "&a▶ Нажмите для переключения"
             ).build());
 
-        // Slot 4: Time Period Switcher (Single toggle button)
-        String periodB64 = plugin.getConfig().getString("gui.buttons.period", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19");
+        // Slot 4: Time Period Switcher
+        String periodB64 = getButtonHead(plugin, "period");
         inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(periodB64)
             .name("&eПериод: " + currentPeriod.getDisplayName())
@@ -109,8 +109,8 @@ public class LeaderboardMainGui extends BaseGui {
                 "&a▶ Нажмите для смены периода"
             ).build());
 
-        // Slot 5: Category Switcher (Single toggle button cycling through categories in-place)
-        String categoryB64 = plugin.getConfig().getString("gui.buttons.category", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=");
+        // Slot 5: Category Switcher
+        String categoryB64 = getButtonHead(plugin, "category");
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
         String catName = catOpt.map(Category::displayName).orElse(currentCategory);
 
@@ -137,7 +137,7 @@ public class LeaderboardMainGui extends BaseGui {
 
         // Slot 52: Back button
         if (GuiNavigationManager.hasHistory(viewer)) {
-            String backB64 = plugin.getConfig().getString("gui.buttons.back", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmM2NTEyMjI1NWMwNDY3ZmFlNzA5ODcyODRmOTc2YWMxYWUzN2VjZTQ2YmMzZmNhMjdjZTMyN2JiMWE3ZCJ9fX0=");
+            String backB64 = getButtonHead(plugin, "back");
             inventory.setItem(52, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(backB64)
                 .name("&e◀ Назад")
@@ -148,7 +148,7 @@ public class LeaderboardMainGui extends BaseGui {
         }
 
         // Slot 53: Close button
-        String closeB64 = plugin.getConfig().getString("gui.buttons.close", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=");
+        String closeB64 = getButtonHead(plugin, "close");
         inventory.setItem(53, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
@@ -164,9 +164,22 @@ public class LeaderboardMainGui extends BaseGui {
             boolean isClanView = "clan".equalsIgnoreCase(entityType);
             String scoreUnit = cat.getScoreUnit();
 
-            // 1. Fetch player rank/score for Slot 0
-            Optional<PlayerStats> playerStats = isClanView ? Optional.empty()
-                : plugin.getLeaderboardManager().getPlayerStats(viewer.getUniqueId(), currentCategory, currentPeriod.getDbKey());
+            // 1. Fetch player / clan rank & score for Slot 0
+            String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
+            String clanId = plugin.getPlayerClanId(viewer.getUniqueId());
+            boolean hasClan = clanName != null && !clanName.isEmpty();
+
+            Optional<PlayerStats> slot0Stats;
+            if (isClanView) {
+                if (hasClan) {
+                    String searchId = clanId != null ? clanId : clanName;
+                    slot0Stats = plugin.getLeaderboardManager().getEntityStats("clan", searchId, currentCategory, currentPeriod.getDbKey());
+                } else {
+                    slot0Stats = Optional.empty();
+                }
+            } else {
+                slot0Stats = plugin.getLeaderboardManager().getPlayerStats(viewer.getUniqueId(), currentCategory, currentPeriod.getDbKey());
+            }
 
             // 2. Fetch Top 50 entries for selected entityType ("clan" or "player")
             List<LeaderboardEntry> top50 = plugin.getLeaderboardManager().getTop(currentCategory, entityType, currentPeriod.getDbKey(), TOTAL_LIMIT);
@@ -182,33 +195,100 @@ public class LeaderboardMainGui extends BaseGui {
             int finalMaxPages = maxPages;
             int finalActualPage = actualPage;
 
-            // 3. Pre-build Slot 0 item ASYNCHRONOUSLY
+            // 3. Pre-build Slot 0 item ASYNCHRONOUSLY using config settings
             org.bukkit.inventory.ItemStack slot0Item;
             if (isClanView) {
-                String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
-                slot0Item = new ItemBuilder(Material.RED_BANNER)
-                    .name("&eКланы: " + cat.displayName())
-                    .lore(
-                        "",
-                        "&7Категория: &f" + cat.displayName(),
-                        "&7Период: " + currentPeriod.getDisplayName(),
-                        "",
-                        clanName != null ? "&7Ваш клан: &a" + clanName : "&7Ваш клан: &cНе состоите в клане"
-                    ).build();
+                if (hasClan) {
+                    String nameTemplate = plugin.getConfig().getString("gui.slot-0.clan.name", "&eВаш клан: &a%clan_name%");
+                    List<String> loreTemplate = plugin.getConfig().getStringList("gui.slot-0.clan.lore");
+                    if (loreTemplate.isEmpty()) {
+                        loreTemplate = List.of(
+                            "",
+                            "&7Категория: &f%category_name%",
+                            "&7Период: %time_period%",
+                            "",
+                            "&7Место вашего клана: &e#%rank%",
+                            "&7%unit%: &a%score%",
+                            "",
+                            "&a⭐ Это ваш клан!"
+                        );
+                    }
+                    String rankStr = slot0Stats.map(s -> s.rank() > 0 ? String.valueOf(s.rank()) : "Не в топе").orElse("Не в топе");
+                    String scoreStr = slot0Stats.map(s -> String.valueOf((long)s.score())).orElse("0");
+
+                    ItemBuilder builder = new ItemBuilder(Material.RED_BANNER)
+                        .name(nameTemplate.replace("%clan_name%", clanName));
+                    for (String line : loreTemplate) {
+                        builder.lore(line
+                            .replace("%category_name%", cat.displayName())
+                            .replace("%time_period%", currentPeriod.getDisplayName())
+                            .replace("%rank%", rankStr)
+                            .replace("%unit%", scoreUnit)
+                            .replace("%score%", scoreStr)
+                            .replace("%clan_name%", clanName)
+                        );
+                    }
+                    slot0Item = builder.build();
+                } else {
+                    String noClanB64 = getButtonHead(plugin, "no-clan");
+                    String nameTemplate = plugin.getConfig().getString("gui.slot-0.no-clan.name", "&cУ вас ещё нет клана");
+                    List<String> loreTemplate = plugin.getConfig().getStringList("gui.slot-0.no-clan.lore");
+                    if (loreTemplate.isEmpty()) {
+                        loreTemplate = List.of(
+                            "",
+                            "&7Категория: &f%category_name%",
+                            "&7Период: %time_period%",
+                            "",
+                            "&7Статус: &cВы не состоите в клане",
+                            "",
+                            "&cВступите или создайте клан для участия"
+                        );
+                    }
+
+                    ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
+                        .base64Head(noClanB64)
+                        .name(nameTemplate);
+                    for (String line : loreTemplate) {
+                        builder.lore(line
+                            .replace("%category_name%", cat.displayName())
+                            .replace("%time_period%", currentPeriod.getDisplayName())
+                        );
+                    }
+                    slot0Item = builder.build();
+                }
             } else {
-                slot0Item = new ItemBuilder(Material.PLAYER_HEAD)
-                    .skullOwner(viewer.getUniqueId())
-                    .name("&e" + viewer.getName())
-                    .lore(
+                String nameTemplate = plugin.getConfig().getString("gui.slot-0.player.name", "&e%player_name%");
+                List<String> loreTemplate = plugin.getConfig().getStringList("gui.slot-0.player.lore");
+                if (loreTemplate.isEmpty()) {
+                    loreTemplate = List.of(
                         "",
-                        "&7Категория: &f" + cat.displayName(),
-                        "&7Период: " + currentPeriod.getDisplayName(),
+                        "&7Категория: &f%category_name%",
+                        "&7Период: %time_period%",
                         "",
-                        playerStats.map(s -> s.rank() > 0 ? "&7Ваше место: &e#" + s.rank() : "&7Ваше место: &cНе в топе").orElse("&7Ваше место: &cНе в топе"),
-                        playerStats.map(s -> "&7" + scoreUnit + ": &a" + (long)s.score()).orElse("&7" + scoreUnit + ": &a0"),
+                        "&7Ваше место: &e#%rank%",
+                        "&7%unit%: &a%score%",
                         "",
+                        "&a⭐ Это вы!",
                         "&a▶ Нажмите, чтобы открыть статистику"
-                    ).build();
+                    );
+                }
+                String rankStr = slot0Stats.map(s -> s.rank() > 0 ? String.valueOf(s.rank()) : "Не в топе").orElse("Не в топе");
+                String scoreStr = slot0Stats.map(s -> String.valueOf((long)s.score())).orElse("0");
+
+                ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
+                    .skullOwner(viewer.getUniqueId())
+                    .name(nameTemplate.replace("%player_name%", viewer.getName()));
+                for (String line : loreTemplate) {
+                    builder.lore(line
+                        .replace("%category_name%", cat.displayName())
+                        .replace("%time_period%", currentPeriod.getDisplayName())
+                        .replace("%rank%", rankStr)
+                        .replace("%unit%", scoreUnit)
+                        .replace("%score%", scoreStr)
+                        .replace("%player_name%", viewer.getName())
+                    );
+                }
+                slot0Item = builder.build();
             }
 
             // 4. Pre-build Grid Items ASYNCHRONOUSLY
@@ -219,34 +299,85 @@ public class LeaderboardMainGui extends BaseGui {
 
                 ItemBuilder itemBuilder;
                 if (entry.entityId().equals("empty")) {
-                    // Empty rank item: WHITE BANNER (not skeleton skull!)
-                    itemBuilder = new ItemBuilder(Material.WHITE_BANNER)
-                        .name("&7#" + entry.rank() + " &8Свободное место")
-                        .lore("", "&7Позиция: &f#" + entry.rank(), "&7Статус: &8Пусто");
+                    String emptyB64 = getButtonHead(plugin, "empty-slot");
+                    String nameTemplate = plugin.getConfig().getString("gui.empty-slot.name", "&7#%rank% &8Свободное место");
+                    List<String> loreTemplate = plugin.getConfig().getStringList("gui.empty-slot.lore");
+                    if (loreTemplate.isEmpty()) {
+                        loreTemplate = List.of("", "&7Позиция: &f#%rank%", "&7Статус: &8Пусто");
+                    }
+
+                    ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
+                        .base64Head(emptyB64)
+                        .name(nameTemplate.replace("%rank%", String.valueOf(entry.rank())));
+                    for (String line : loreTemplate) {
+                        builder.lore(line.replace("%rank%", String.valueOf(entry.rank())));
+                    }
+                    itemBuilder = builder;
                 } else if (isClanView) {
-                    // Clan entry item: RED BANNER (instead of player head!)
-                    itemBuilder = new ItemBuilder(Material.RED_BANNER)
-                        .name(color + "#" + entry.rank() + " &f" + entry.entityName())
-                        .lore(
-                            "",
-                            "&7Позиция клана: &f#" + entry.rank(),
-                            "&7" + scoreUnit + ": &a" + (long) entry.score()
-                        );
+                    boolean isSelfClan = hasClan && entry.entityName().equalsIgnoreCase(clanName);
+                    if (isSelfClan) {
+                        itemBuilder = new ItemBuilder(Material.RED_BANNER)
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName() + " &a(Ваш клан)")
+                            .lore(
+                                "",
+                                "&7Позиция клана: &f#" + entry.rank(),
+                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
+                                "",
+                                "&a⭐ Это ваш клан!",
+                                "&7(Сравнить свой клан с собой нельзя)"
+                            );
+                    } else if (hasClan) {
+                        itemBuilder = new ItemBuilder(Material.RED_BANNER)
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
+                            .lore(
+                                "",
+                                "&7Позиция клана: &f#" + entry.rank(),
+                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
+                                "",
+                                "&a▶ Нажмите для сравнения с вашим кланом"
+                            );
+                    } else {
+                        // Viewer has NO clan -> NO compare option in lore!
+                        itemBuilder = new ItemBuilder(Material.RED_BANNER)
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
+                            .lore(
+                                "",
+                                "&7Позиция клана: &f#" + entry.rank(),
+                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
+                                "",
+                                "&c(У вас ещё нет клана)"
+                            );
+                    }
                 } else {
-                    itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                        .name(color + "#" + entry.rank() + " &f" + entry.entityName())
-                        .lore(
-                            "",
-                            "&7Позиция: &f#" + entry.rank(),
-                            "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                            "",
-                            "&aЛКМ &7— статистику игрока",
-                            "&aПКМ &7— сравнить со мной"
-                        );
+                    boolean isSelfPlayer = entry.entityId().equalsIgnoreCase(viewer.getUniqueId().toString())
+                        || entry.entityName().equalsIgnoreCase(viewer.getName());
+                    if (isSelfPlayer) {
+                        itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName() + " &a(Вы)")
+                            .lore(
+                                "",
+                                "&7Позиция: &f#" + entry.rank(),
+                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
+                                "",
+                                "&a⭐ Это вы!",
+                                "&a▶ Нажмите для просмотра статистики"
+                            );
+                    } else {
+                        itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
+                            .lore(
+                                "",
+                                "&7Позиция: &f#" + entry.rank(),
+                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
+                                "",
+                                "&aЛКМ &7— статистику игрока",
+                                "&aПКМ &7— сравнить со мной"
+                            );
+                    }
                     try {
-                        java.util.UUID uuid = java.util.UUID.fromString(entry.entityId());
+                        UUID uuid = UUID.fromString(entry.entityId());
                         itemBuilder.playerProfile(uuid, entry.entityName());
-                    } catch (Exception ignored) {
+                    } catch (IllegalArgumentException e) {
                         itemBuilder.skullOwner(entry.entityName());
                     }
                 }
@@ -256,7 +387,7 @@ public class LeaderboardMainGui extends BaseGui {
             // 5. Pre-build Pagination Items ASYNCHRONOUSLY
             org.bukkit.inventory.ItemStack prevItem = null;
             if (finalActualPage > 1) {
-                String prevB64 = plugin.getConfig().getString("gui.buttons.prev-page", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=");
+                String prevB64 = getButtonHead(plugin, "prev-page");
                 prevItem = new ItemBuilder(Material.PLAYER_HEAD)
                     .base64Head(prevB64)
                     .name("&e◀ Предыдущая страница")
@@ -266,7 +397,7 @@ public class LeaderboardMainGui extends BaseGui {
 
             org.bukkit.inventory.ItemStack nextItem = null;
             if (finalActualPage < finalMaxPages) {
-                String nextB64 = plugin.getConfig().getString("gui.buttons.next-page", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjgyYWQxYjRjY2RiNjZkNTkyNzJmMTc3YWMwZGRhZDE0YzA0NzJjNzcyNTM1ZTUwZmE5ZDkxNGIyMjFhNjc5NSJ9fX0=");
+                String nextB64 = getButtonHead(plugin, "next-page");
                 nextItem = new ItemBuilder(Material.PLAYER_HEAD)
                     .base64Head(nextB64)
                     .name("&eСледующая страница ▶")
@@ -305,7 +436,15 @@ public class LeaderboardMainGui extends BaseGui {
         );
 
         if (slot == 0) {
-            // Slot 0 click: Open Player Statistics (PlayerStatsGui)
+            if ("clan".equalsIgnoreCase(entityType)) {
+                String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
+                if (clanName == null || clanName.isEmpty()) {
+                    String noClanMsg = plugin.getConfig().getString("messages.no-clan", "&cУ вас ещё нет клана!");
+                    viewer.sendMessage(TextUtil.parse(noClanMsg));
+                    return;
+                }
+            }
+            // Slot 0 click: Open Statistics (PlayerStatsGui)
             GuiNavigationManager.pushState(viewer, currentState);
             viewer.openInventory(new PlayerStatsGui(plugin, viewer, viewer, currentCategory, currentPeriod).getInventory());
             return;
@@ -332,7 +471,7 @@ public class LeaderboardMainGui extends BaseGui {
         }
 
         if (slot == 5) {
-            // Cycle category in-place (Single toggle button like period!)
+            // Cycle category in-place
             boolean forward = !event.isRightClick();
             String nextCat = plugin.getCategoryManager().getNextCategory(currentCategory, entityType, forward);
             viewer.openInventory(new LeaderboardMainGui(plugin, viewer, nextCat, currentPeriod, entityType, 1).getInventory());
@@ -354,33 +493,58 @@ public class LeaderboardMainGui extends BaseGui {
             return;
         }
 
-        // Grid clicks: player head entry
-        if (!"clan".equalsIgnoreCase(entityType)) {
-            for (int i = 0; i < GRID_SLOTS.length; i++) {
-                if (GRID_SLOTS[i] == slot) {
-                    List<LeaderboardEntry> top50 = plugin.getLeaderboardManager().getTop(currentCategory, entityType, currentPeriod.getDbKey(), TOTAL_LIMIT);
-                    int startIndex = (page - 1) * ITEMS_PER_PAGE;
-                    int index = startIndex + i;
-                    if (index < top50.size()) {
-                        LeaderboardEntry entry = top50.get(index);
-                        if (!entry.entityId().equals("empty")) {
+        // Grid clicks
+        for (int i = 0; i < GRID_SLOTS.length; i++) {
+            if (GRID_SLOTS[i] == slot) {
+                List<LeaderboardEntry> top50 = plugin.getLeaderboardManager().getTop(currentCategory, entityType, currentPeriod.getDbKey(), TOTAL_LIMIT);
+                int startIndex = (page - 1) * ITEMS_PER_PAGE;
+                int index = startIndex + i;
+                if (index < top50.size()) {
+                    LeaderboardEntry entry = top50.get(index);
+                    if (!entry.entityId().equals("empty")) {
+                        if ("clan".equalsIgnoreCase(entityType)) {
+                            String viewerClanName = plugin.getPlayerClanName(viewer.getUniqueId());
+                            if (viewerClanName == null || viewerClanName.isEmpty()) {
+                                String noClanMsg = plugin.getConfig().getString("messages.no-clan", "&cУ вас ещё нет клана!");
+                                viewer.sendMessage(TextUtil.parse(noClanMsg));
+                                return;
+                            }
+                            if (entry.entityName().equalsIgnoreCase(viewerClanName)) {
+                                String selfClanMsg = plugin.getConfig().getString("messages.comparison-self", "&cНельзя сравнивать свой клан с самим собой!");
+                                viewer.sendMessage(TextUtil.parse(selfClanMsg));
+                                return;
+                            }
+                            GuiNavigationManager.pushState(viewer, currentState);
+                            // Open Clan Comparison!
+                            viewer.openInventory(new PlayerComparisonGui(plugin, viewer, viewerClanName, entry.entityName(), currentCategory, currentPeriod).getInventory());
+                        } else {
                             try {
-                                java.util.UUID uuid = java.util.UUID.fromString(entry.entityId());
+                                UUID uuid = UUID.fromString(entry.entityId());
                                 OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(uuid);
-                                GuiNavigationManager.pushState(viewer, currentState);
 
+                                boolean isSelf = targetPlayer.getUniqueId().equals(viewer.getUniqueId());
+                                GuiNavigationManager.pushState(viewer, currentState);
                                 if (event.isRightClick()) {
+                                    if (isSelf) {
+                                        String selfMsg = plugin.getConfig().getString("messages.comparison-self", "&cНельзя сравнивать себя с самим собой!");
+                                        viewer.sendMessage(TextUtil.parse(selfMsg));
+                                        return;
+                                    }
                                     // Compare directly
                                     viewer.openInventory(new PlayerComparisonGui(plugin, viewer, targetPlayer, currentCategory, currentPeriod).getInventory());
                                 } else {
                                     // Open target player stats
                                     viewer.openInventory(new PlayerStatsGui(plugin, viewer, targetPlayer, currentCategory, currentPeriod).getInventory());
                                 }
-                            } catch (Exception ignored) {}
+                            } catch (IllegalArgumentException e) {
+                                plugin.getLogger().fine("Entity ID is not a valid UUID: " + entry.entityId());
+                            } catch (Exception e) {
+                                plugin.getLogger().warning("Error handling leaderboard grid click: " + e.getMessage());
+                            }
                         }
                     }
-                    return;
                 }
+                return;
             }
         }
 

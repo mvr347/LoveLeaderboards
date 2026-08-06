@@ -11,7 +11,6 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class CategorySelectGui extends BaseGui {
@@ -59,9 +58,7 @@ public class CategorySelectGui extends BaseGui {
         inventory.setItem(2, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
 
         boolean isClanView = "clan".equalsIgnoreCase(entityTypeFilter);
-        String typeB64 = isClanView
-            ? "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0="
-            : "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM2MzZWQ3In19fQ==";
+        String typeB64 = getButtonHead(plugin, isClanView ? "type-clan" : "type-player");
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(typeB64)
             .name("&eТип: &f" + (isClanView ? "👑 Кланы" : "👥 Игроки"))
@@ -69,14 +66,14 @@ public class CategorySelectGui extends BaseGui {
             .build());
 
         if (compareTarget != null) {
-            String compareB64 = plugin.getConfig().getString("gui.buttons.comparison", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=");
+            String compareB64 = getButtonHead(plugin, "comparison");
             inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(compareB64)
                 .name("&6⚔️ Сравнение с: &e" + (compareTarget.getName() != null ? compareTarget.getName() : "Игрок"))
                 .lore("", "&7Выберите категорию для сравнения")
                 .build());
         } else {
-            String categoryB64 = plugin.getConfig().getString("gui.buttons.category", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=");
+            String categoryB64 = getButtonHead(plugin, "category");
             inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(categoryB64)
                 .name("&eДоступные категории")
@@ -101,7 +98,7 @@ public class CategorySelectGui extends BaseGui {
 
         // Slot 52: Back button
         if (GuiNavigationManager.hasHistory(viewer)) {
-            String backB64 = plugin.getConfig().getString("gui.buttons.back", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmM2NTEyMjI1NWMwNDY3ZmFlNzA5ODcyODRmOTc2YWMxYWUzN2VjZTQ2YmMzZmNhMjdjZTMyN2JiMWE3ZCJ9fX0=");
+            String backB64 = getButtonHead(plugin, "back");
             inventory.setItem(52, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(backB64)
                 .name("&e◀ Назад")
@@ -112,7 +109,7 @@ public class CategorySelectGui extends BaseGui {
         }
 
         // Slot 53: Close button
-        String closeB64 = plugin.getConfig().getString("gui.buttons.close", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=");
+        String closeB64 = getButtonHead(plugin, "close");
         inventory.setItem(53, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
@@ -134,12 +131,13 @@ public class CategorySelectGui extends BaseGui {
 
         for (int i = 0; i < matching.size() && i < GRID_SLOTS.length; i++) {
             Category cat = matching.get(i);
-            Material mat = cat.isClanCategory() ? Material.RED_BANNER : Material.PLAYER_HEAD;
-            ItemBuilder builder = new ItemBuilder(mat);
-
-            if (!cat.isClanCategory()) {
-                String catHead = getHeadForCategory(cat.name());
-                builder.base64Head(catHead);
+            String catHead = getCategoryHead(plugin, cat.name());
+            ItemBuilder builder;
+            if (catHead != null && !catHead.isEmpty()) {
+                builder = new ItemBuilder(Material.PLAYER_HEAD).base64Head(catHead);
+            } else {
+                Material mat = cat.isClanCategory() ? Material.RED_BANNER : Material.PLAYER_HEAD;
+                builder = new ItemBuilder(mat);
             }
 
             builder.name(cat.displayName())
@@ -152,17 +150,6 @@ public class CategorySelectGui extends BaseGui {
                 );
             inventory.setItem(GRID_SLOTS[i], builder.build());
         }
-    }
-
-    private String getHeadForCategory(String categoryName) {
-        String defaultB64 = switch (categoryName.toLowerCase()) {
-            case "kills" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
-            case "bounty-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-            case "contracts-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-            case "clan-power" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19";
-            default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-        };
-        return plugin.getConfig().getString("gui.buttons.categories." + categoryName, defaultB64);
     }
 
     @Override

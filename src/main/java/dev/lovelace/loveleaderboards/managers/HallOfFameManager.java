@@ -26,6 +26,7 @@ public class HallOfFameManager {
     private final File standsFile;
     private YamlConfiguration standsConfig;
     private final Map<String, LeaderboardStand> stands = new ConcurrentHashMap<>();
+    private org.bukkit.scheduler.BukkitTask refreshTask;
 
     public HallOfFameManager(LoveLeaderboards plugin) {
         this.plugin = plugin;
@@ -33,6 +34,10 @@ public class HallOfFameManager {
     }
 
     public void loadStands() {
+        if (refreshTask != null) {
+            refreshTask.cancel();
+            refreshTask = null;
+        }
         stands.clear();
         if (!standsFile.exists()) {
             try {
@@ -74,7 +79,7 @@ public class HallOfFameManager {
         plugin.getLogger().info("Loaded " + stands.size() + " Hall of Fame stands.");
         
         // Schedule periodic refresh of stands (holograms & skins)
-        Bukkit.getScheduler().runTaskTimer(plugin, this::updateAllStands, 100L, 600L);
+        refreshTask = Bukkit.getScheduler().runTaskTimer(plugin, this::updateAllStands, 100L, 600L);
     }
 
     public void saveStands() {
@@ -127,7 +132,6 @@ public class HallOfFameManager {
         LeaderboardStand stand = new LeaderboardStand(id, location, category, position, type, null, npcId, null);
         stands.put(id, stand);
         
-        spawnOrUpdateHologram(stand);
         updateStand(stand);
         saveStands();
         return true;
@@ -144,7 +148,9 @@ public class HallOfFameManager {
                 if (npc != null) {
                     npc.destroy();
                 }
-            } catch (Throwable ignored) {}
+            } catch (Throwable t) {
+                plugin.getLogger().log(java.util.logging.Level.FINE, "Failed to destroy Citizens NPC for stand " + id, t);
+            }
         }
 
         // Remove Hologram text display if present
@@ -168,17 +174,29 @@ public class HallOfFameManager {
     public void updateStand(LeaderboardStand stand) {
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(stand.getCategory());
         String entityType = catOpt.map(Category::getEntityType).orElse("player");
+        String periodDbKey = dev.lovelace.loveleaderboards.models.TimePeriod.fromString(stand.getCurrentPeriod()).getDbKey();
 
-        List<LeaderboardEntry> top = plugin.getLeaderboardManager().getTop(
-                stand.getCategory(), entityType, stand.getCurrentPeriod(), stand.getPosition()
-        );
+        if (Bukkit.isPrimaryThread()) {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                List<LeaderboardEntry> top = plugin.getDatabaseManager().getTopByCategory(
+                    stand.getCategory(), entityType, periodDbKey, stand.getPosition()
+                );
+                LeaderboardEntry targetEntry = (!top.isEmpty() && top.size() >= stand.getPosition()) ? top.get(stand.getPosition() - 1) : null;
+                Bukkit.getScheduler().runTask(plugin, () -> applyStandUpdate(stand, targetEntry));
+            });
+        } else {
+            List<LeaderboardEntry> top = plugin.getDatabaseManager().getTopByCategory(
+                stand.getCategory(), entityType, periodDbKey, stand.getPosition()
+            );
+            LeaderboardEntry targetEntry = (!top.isEmpty() && top.size() >= stand.getPosition()) ? top.get(stand.getPosition() - 1) : null;
+            Bukkit.getScheduler().runTask(plugin, () -> applyStandUpdate(stand, targetEntry));
+        }
+    }
 
-        LeaderboardEntry targetEntry = (top.size() >= stand.getPosition()) ? top.get(stand.getPosition() - 1) : null;
-        
+    private void applyStandUpdate(LeaderboardStand stand, LeaderboardEntry targetEntry) {
         String emptyPlayerName = plugin.getConfig().getString("hall-of-fame.hologram.empty-player-name", "Свободно");
-        String playerName = targetEntry != null ? targetEntry.entityName() : emptyPlayerName;
+        String playerName = targetEntry != null && !targetEntry.entityId().equals("empty") ? targetEntry.entityName() : emptyPlayerName;
         double score = targetEntry != null ? targetEntry.score() : 0;
-
 
         // 1. Update Citizens NPC skin and name if available
         if (stand.getNpcId() != -1 && Bukkit.getPluginManager().isPluginEnabled("Citizens")) {
@@ -222,13 +240,9 @@ public class HallOfFameManager {
     }
 
     public void togglePeriod(LeaderboardStand stand) {
-        String newPeriod = stand.cycleNextPeriod();
+        stand.cycleNextPeriod();
         updateStand(stand);
         saveStands();
-    }
-
-    private void spawnOrUpdateHologram(LeaderboardStand stand) {
-        updateStand(stand);
     }
 
     private void spawnOrUpdateHologram(LeaderboardStand stand, String playerName, double score) {
@@ -282,7 +296,6 @@ public class HallOfFameManager {
                     .replace("%clan%", playerName)
                     .replace("%score%", String.valueOf((long) score));
 
-
             if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
                 formatted = PlaceholderAPI.setPlaceholders(null, formatted);
             }
@@ -291,7 +304,7 @@ public class HallOfFameManager {
 
         String fullText = String.join("\n", formattedLines);
 
-        // Native TextDisplay Entity management (Paper 1.21+)
+        // Native TextDisplay Entity management
         TextDisplay textDisplay = null;
         if (stand.getHologramEntityUuid() != null) {
             Entity entity = Bukkit.getEntity(stand.getHologramEntityUuid());
@@ -301,19 +314,31 @@ public class HallOfFameManager {
         }
 
         if (textDisplay == null) {
-            TextDisplay newTd = (TextDisplay) holoLoc.getWorld().spawnEntity(holoLoc, EntityType.TEXT_DISPLAY);
-            
-            String billboardStr = plugin.getConfig().getString("hall-of-fame.hologram.billboard", "CENTER");
-            try {
-                newTd.setBillboard(Display.Billboard.valueOf(billboardStr.toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                newTd.setBillboard(Display.Billboard.CENTER);
+            if (holoLoc.getWorld() == null || !holoLoc.getChunk().isLoaded()) {
+                return;
             }
-            
-            newTd.setSeeThrough(plugin.getConfig().getBoolean("hall-of-fame.hologram.see-through", false));
-            newTd.setShadowed(plugin.getConfig().getBoolean("hall-of-fame.hologram.shadowed", true));
-            stand.setHologramEntityUuid(newTd.getUniqueId());
-            textDisplay = newTd;
+            for (Entity nearby : holoLoc.getWorld().getNearbyEntities(holoLoc, 1.5, 1.5, 1.5)) {
+                if (nearby instanceof TextDisplay td && td.isValid()) {
+                    textDisplay = td;
+                    stand.setHologramEntityUuid(td.getUniqueId());
+                    break;
+                }
+            }
+            if (textDisplay == null) {
+                TextDisplay newTd = (TextDisplay) holoLoc.getWorld().spawnEntity(holoLoc, EntityType.TEXT_DISPLAY);
+                
+                String billboardStr = plugin.getConfig().getString("hall-of-fame.hologram.billboard", "CENTER");
+                try {
+                    newTd.setBillboard(Display.Billboard.valueOf(billboardStr.toUpperCase()));
+                } catch (IllegalArgumentException e) {
+                    newTd.setBillboard(Display.Billboard.CENTER);
+                }
+                
+                newTd.setSeeThrough(plugin.getConfig().getBoolean("hall-of-fame.hologram.see-through", false));
+                newTd.setShadowed(plugin.getConfig().getBoolean("hall-of-fame.hologram.shadowed", true));
+                stand.setHologramEntityUuid(newTd.getUniqueId());
+                textDisplay = newTd;
+            }
         }
 
         textDisplay.teleport(holoLoc);
@@ -344,5 +369,20 @@ public class HallOfFameManager {
 
     public Collection<LeaderboardStand> getAllStands() {
         return stands.values();
+    }
+
+    public void removeAllHolograms() {
+        if (refreshTask != null) {
+            refreshTask.cancel();
+            refreshTask = null;
+        }
+        for (LeaderboardStand stand : stands.values()) {
+            if (stand.getHologramEntityUuid() != null) {
+                Entity entity = Bukkit.getEntity(stand.getHologramEntityUuid());
+                if (entity != null) {
+                    entity.remove();
+                }
+            }
+        }
     }
 }

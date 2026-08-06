@@ -5,6 +5,7 @@ import dev.lovelace.loveleaderboards.gui.LeaderboardMainGui;
 import dev.lovelace.loveleaderboards.gui.PlayerComparisonGui;
 import dev.lovelace.loveleaderboards.models.Category;
 import dev.lovelace.loveleaderboards.models.TimePeriod;
+import dev.lovelace.loveleaderboards.utils.TextUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -39,13 +40,24 @@ public class LeaderboardCommand implements TabExecutor {
         String sub = args[0].toLowerCase();
         if (sub.equals("compare")) {
             if (args.length < 2) {
-                player.sendMessage("§cИспользование: /leaderboard compare <игрок>");
+                player.sendMessage(TextUtil.parse("&cИспользование: /leaderboard compare <игрок>"));
                 return true;
             }
             OfflinePlayer target = Bukkit.getOfflinePlayerIfCached(args[1]);
             if (target == null) {
                 target = Bukkit.getOfflinePlayer(args[1]);
             }
+
+            if (target.getUniqueId().equals(player.getUniqueId())) {
+                player.sendMessage(TextUtil.parse("&cНельзя сравнивать себя с самим собой!"));
+                return true;
+            }
+
+            if (target.getName() == null && !target.hasPlayedBefore()) {
+                player.sendMessage(TextUtil.parse("&cИгрок '" + args[1] + "' не найден!"));
+                return true;
+            }
+
             player.openInventory(new PlayerComparisonGui(plugin, player, target).getInventory());
             return true;
         }

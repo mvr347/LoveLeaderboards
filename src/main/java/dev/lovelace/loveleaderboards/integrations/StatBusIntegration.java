@@ -67,6 +67,42 @@ public class StatBusIntegration implements Listener {
      * это делал целый {@code LoveClansIntegration}, но теперь только ради имени, а не ради всех
      * метрик разом — сама метрика уже пришла в событии.
      */
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
+    public void onGenericClanDisband(org.bukkit.event.Event event) {
+        String eventName = event.getClass().getSimpleName();
+        if (eventName.contains("ClanDisband") || eventName.contains("ClanDelete") || eventName.contains("ClanRemove") || eventName.contains("ClanDestroy")) {
+            try {
+                String clanId = null;
+                String clanName = null;
+                try {
+                    Object clan = event.getClass().getMethod("getClan").invoke(event);
+                    if (clan != null) {
+                        try {
+                            Object idObj = clan.getClass().getMethod("id").invoke(clan);
+                            if (idObj != null) clanId = idObj.toString();
+                        } catch (Exception e) {
+                            plugin.getLogger().log(java.util.logging.Level.FINE, "Reflection getClan().id failed", e);
+                        }
+                        try {
+                            Object nameObj = clan.getClass().getMethod("name").invoke(clan);
+                            if (nameObj != null) clanName = nameObj.toString();
+                        } catch (Exception e) {
+                            plugin.getLogger().log(java.util.logging.Level.FINE, "Reflection getClan().name failed", e);
+                        }
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().log(java.util.logging.Level.FINE, "Reflection getClan failed", e);
+                }
+
+                if (clanId != null || clanName != null) {
+                    plugin.getLeaderboardManager().removeClan(clanId, clanName);
+                }
+            } catch (Throwable t) {
+                plugin.getLogger().log(java.util.logging.Level.FINE, "Clan disband reflection handler failed", t);
+            }
+        }
+    }
+
     private String resolveClanName(UUID clanId) {
         try {
             Class<?> apiClass = Class.forName("me.lovelace.loveclans.api.LoveClansAPI");
@@ -76,8 +112,8 @@ public class StatBusIntegration implements Listener {
                 Object clan = optional.get();
                 return String.valueOf(clan.getClass().getMethod("name").invoke(clan));
             }
-        } catch (ReflectiveOperationException ignored) {
-            // LoveClans не установлен или API изменился — покажем клан по id.
+        } catch (ReflectiveOperationException e) {
+            plugin.getLogger().log(java.util.logging.Level.FINE, "LoveClans API resolveClanName reflective call failed: " + e.getMessage());
         }
         return clanId.toString();
     }

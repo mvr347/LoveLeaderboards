@@ -40,13 +40,14 @@ public class PlaceholderAPIIntegration extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer player, @NotNull String params) {
-        // Format 1: %loveleaderboards_alltime_top_<category>_<position>_<field>%
-        // Format 2: %loveleaderboards_alltime_top_<position>_<field>% (Fallback to first category)
+        // Format 1: %loveleaderboards_<period>_top_<category>_<position>_<field>%
+        // Format 2: %loveleaderboards_<period>_top_<position>_<field>% (Fallback to first category)
         
         String[] args = params.split("_");
         
-        if (args.length >= 3 && (args[0].equals("alltime") || args[0].equals("monthly")) && args[1].equals("top")) {
-            String timePeriod = args[0].equals("alltime") ? "alltime" : getCurrentMonthString();
+        if (args.length >= 3 && args[1].equals("top")) {
+            dev.lovelace.loveleaderboards.models.TimePeriod periodEnum = dev.lovelace.loveleaderboards.models.TimePeriod.fromString(args[0]);
+            String timePeriod = periodEnum.getDbKey();
             
             String category;
             int position;
@@ -55,7 +56,12 @@ public class PlaceholderAPIIntegration extends PlaceholderExpansion {
             // Try parsing args[2] as position (Format 2)
             try {
                 position = Integer.parseInt(args[2]);
-                category = plugin.getCategoryManager().getAllCategories().stream().findFirst().map(dev.lovelace.loveleaderboards.models.Category::name).orElse("kills");
+                category = plugin.getCategoryManager().getAllCategories().stream()
+                        .filter(dev.lovelace.loveleaderboards.models.Category::enabled)
+                        .sorted(java.util.Comparator.comparingInt(dev.lovelace.loveleaderboards.models.Category::sortOrder))
+                        .findFirst()
+                        .map(dev.lovelace.loveleaderboards.models.Category::name)
+                        .orElse("kills");
                 fieldIndex = 3;
             } catch (NumberFormatException e) {
                 // If it fails, args[2] is the category (Format 1)
@@ -77,9 +83,13 @@ public class PlaceholderAPIIntegration extends PlaceholderExpansion {
 
             if (top.size() >= position) {
                 LeaderboardEntry entry = top.get(position - 1);
+                if (entry.entityId().equals("empty")) {
+                    return "---";
+                }
                 return switch (field.toLowerCase()) {
                     case "name" -> entry.entityName();
-                    case "score" -> String.valueOf(entry.score());
+                    case "score" -> String.valueOf((long) entry.score());
+                    case "score_formatted", "score_double" -> String.valueOf(entry.score());
                     case "rank" -> String.valueOf(entry.rank());
                     default -> "";
                 };
@@ -88,23 +98,37 @@ public class PlaceholderAPIIntegration extends PlaceholderExpansion {
         }
         
         if (player != null && args.length >= 1) {
-            String defaultCategory = plugin.getCategoryManager().getAllCategories().stream().findFirst().map(dev.lovelace.loveleaderboards.models.Category::name).orElse("kills");
-            if (args[0].equals("myrank")) {
+            String defaultCategory = plugin.getCategoryManager().getAllCategories().stream()
+                    .filter(dev.lovelace.loveleaderboards.models.Category::enabled)
+                    .sorted(java.util.Comparator.comparingInt(dev.lovelace.loveleaderboards.models.Category::sortOrder))
+                    .findFirst()
+                    .map(dev.lovelace.loveleaderboards.models.Category::name)
+                    .orElse("kills");
+
+            String sub = args[0].toLowerCase();
+            if (sub.equals("myrank") || sub.equals("myscore") || sub.equals("myclanrank") || sub.equals("myclanscore")) {
                 String category = args.length >= 2 ? args[1] : defaultCategory;
-                Optional<PlayerStats> stats = plugin.getLeaderboardManager().getPlayerStats(player.getUniqueId(), category);
-                return stats.map(s -> String.valueOf(s.rank())).orElse("Нет");
-            } else if (args[0].equals("myscore")) {
-                String category = args.length >= 2 ? args[1] : defaultCategory;
-                Optional<PlayerStats> stats = plugin.getLeaderboardManager().getPlayerStats(player.getUniqueId(), category);
-                return stats.map(s -> String.valueOf(s.score())).orElse("0");
+                Optional<dev.lovelace.loveleaderboards.models.Category> catOpt = plugin.getCategoryManager().getCategory(category);
+                boolean isClan = sub.contains("clan") || (catOpt.isPresent() && catOpt.get().isClanCategory());
+
+                Optional<PlayerStats> stats;
+                if (isClan) {
+                    String clanId = plugin.getPlayerClanId(player.getUniqueId());
+                    String clanName = plugin.getPlayerClanName(player.getUniqueId());
+                    String searchId = clanId != null ? clanId : clanName;
+                    stats = searchId != null ? plugin.getLeaderboardManager().getEntityStats("clan", searchId, category, dev.lovelace.loveleaderboards.models.TimePeriod.ALL_TIME.getDbKey()) : Optional.empty();
+                } else {
+                    stats = plugin.getLeaderboardManager().getPlayerStats(player.getUniqueId(), category);
+                }
+
+                if (sub.endsWith("rank")) {
+                    return stats.map(s -> String.valueOf(s.rank())).orElse("Нет");
+                } else {
+                    return stats.map(s -> String.valueOf((long) s.score())).orElse("0");
+                }
             }
         }
 
         return null;
-    }
-
-    private String getCurrentMonthString() {
-        LocalDate now = LocalDate.now();
-        return String.format("%04d-%02d", now.getYear(), now.getMonthValue());
     }
 }

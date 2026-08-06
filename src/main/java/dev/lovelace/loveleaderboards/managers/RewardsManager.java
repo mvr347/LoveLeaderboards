@@ -1,12 +1,12 @@
 package dev.lovelace.loveleaderboards.managers;
 
 import dev.lovelace.loveleaderboards.LoveLeaderboards;
+import dev.lovelace.loveleaderboards.models.Category;
 import dev.lovelace.loveleaderboards.models.LeaderboardEntry;
 import dev.lovelace.loveleaderboards.utils.TextUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public class RewardsManager {
@@ -19,17 +19,18 @@ public class RewardsManager {
     public void issueMonthlyRewards() {
         if (!plugin.getConfig().getBoolean("rewards.enabled", true)) return;
 
-        String lastMonth = getLastMonthString();
         ConfigurationSection categoriesSec = plugin.getConfig().getConfigurationSection("rewards.categories");
         if (categoriesSec == null) return;
 
         for (String category : categoriesSec.getKeys(false)) {
             int maxRank = 50; 
 
-            dev.lovelace.loveleaderboards.models.Category catObj = plugin.getCategoryManager().getCategory(category).orElse(null);
+            Category catObj = plugin.getCategoryManager().getCategory(category).orElse(null);
             String entityType = catObj != null ? catObj.getEntityType() : "player";
             
-            List<LeaderboardEntry> top = plugin.getLeaderboardManager().getTop(category, entityType, lastMonth, maxRank);
+            // Query monthly top scores using the active monthly DB period key (e.g. 2026-08)
+            String monthlyKey = dev.lovelace.loveleaderboards.models.TimePeriod.MONTHLY.getDbKey();
+            List<LeaderboardEntry> top = plugin.getLeaderboardManager().getTop(category, entityType, monthlyKey, maxRank);
             if (top.isEmpty() || (top.size() == 1 && top.get(0).entityName().equals("Свободное место"))) continue;
 
             ConfigurationSection ranksSec = categoriesSec.getConfigurationSection(category);
@@ -51,13 +52,13 @@ public class RewardsManager {
                         if (rank >= min && rank <= max) {
                             List<String> commands = ranksSec.getStringList(key + ".commands");
                             
-                            // Execute commands synchronously
+                            // Execute reward commands on main server thread
                             Bukkit.getScheduler().runTask(plugin, () -> {
                                 for (String cmd : commands) {
                                     String finalCmd = cmd.replace("%player%", entry.entityName())
                                                          .replace("%clan%", entry.entityName())
                                                          .replace("%clan_name%", entry.entityName())
-                                                         .replace("%score%", String.valueOf(entry.score()));
+                                                         .replace("%score%", String.valueOf((long) entry.score()));
                                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
                                 }
                             });
@@ -68,16 +69,12 @@ public class RewardsManager {
             }
         }
 
-        
-        // Notify players
+        // Broadcast notification
         String message = plugin.getConfig().getString("messages.rewards-given");
         if (message != null && !message.isEmpty()) {
-            Bukkit.getServer().sendMessage(TextUtil.parse(message.replace("%month%", lastMonth)));
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                Bukkit.getServer().sendMessage(TextUtil.parse(message));
+            });
         }
-    }
-
-    private String getLastMonthString() {
-        LocalDate last = LocalDate.now().minusMonths(1);
-        return String.format("%04d-%02d", last.getYear(), last.getMonthValue());
     }
 }

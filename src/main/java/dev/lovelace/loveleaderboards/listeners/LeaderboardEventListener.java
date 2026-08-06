@@ -8,6 +8,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 public class LeaderboardEventListener implements Listener {
     private final LoveLeaderboards plugin;
@@ -20,6 +21,11 @@ public class LeaderboardEventListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         plugin.getLeaderboardManager().ensurePlayerExists(player.getUniqueId(), player.getName());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        dev.lovelace.loveleaderboards.gui.GuiNavigationManager.clearHistory(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

@@ -24,6 +24,10 @@ public class CacheManager<K, V> {
         });
     }
 
+    public int getMaxCacheSize() {
+        return maxCacheSize;
+    }
+
     public Optional<V> get(K key) {
         CachedValue<V> cached = cache.get(key);
         if (cached == null) return Optional.empty();

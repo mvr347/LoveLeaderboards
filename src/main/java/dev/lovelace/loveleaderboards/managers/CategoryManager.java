@@ -35,6 +35,12 @@ public class CategoryManager {
             String scoreUnit = section.getString(key + ".score-unit", null);
             String entityType = section.getString(key + ".entity-type", null);
             String icon = section.getString(key + ".icon", null);
+            if (icon == null || icon.isEmpty()) {
+                icon = section.getString(key + ".head-b64", null);
+            }
+            if ((icon == null || icon.isEmpty()) && plugin.getHeadManager() != null) {
+                icon = plugin.getHeadManager().getHead(name);
+            }
 
             Category category = new Category(
                 name, displayName, description, enabled, sortOrder,

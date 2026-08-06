@@ -13,22 +13,29 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public class PlayerComparisonGui extends BaseGui {
     private final LoveLeaderboards plugin;
     private final Player viewer;
-    private final OfflinePlayer target;
+    private final OfflinePlayer targetPlayer;
+    private final String viewerClanName;
+    private final String targetClanName;
+    private final String entityType; // "player" or "clan"
     private final String currentCategory;
     private final TimePeriod currentPeriod;
 
+    // Constructor for Player vs Player comparison
     public PlayerComparisonGui(LoveLeaderboards plugin, Player viewer, OfflinePlayer target) {
         this(
             plugin,
             viewer,
             target,
-            plugin.getCategoryManager().getAllCategories().stream().findFirst().map(Category::name).orElse("kills"),
+            plugin.getCategoryManager().getAllCategories().stream()
+                .filter(Category::enabled)
+                .filter(c -> "player".equalsIgnoreCase(c.getEntityType()))
+                .findFirst().map(Category::name).orElse("kills"),
             TimePeriod.ALL_TIME
         );
     }
@@ -36,44 +43,69 @@ public class PlayerComparisonGui extends BaseGui {
     public PlayerComparisonGui(LoveLeaderboards plugin, Player viewer, OfflinePlayer target, String category, TimePeriod period) {
         this.plugin = plugin;
         this.viewer = viewer;
-        this.target = target;
+        this.targetPlayer = target;
+        this.viewerClanName = null;
+        this.targetClanName = null;
+        this.entityType = "player";
         this.currentCategory = category != null ? category : "kills";
         this.currentPeriod = period != null ? period : TimePeriod.ALL_TIME;
 
-        Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
-        boolean isClan = catOpt.map(Category::isClanCategory).orElse(false);
+        String title = plugin.getConfig().getString("gui.comparison.title", "&6⚔️ Сравнение игроков");
+        int size = plugin.getConfig().getInt("gui.comparison.size", 27);
+        this.inventory = Bukkit.createInventory(this, size, TextUtil.parse(title));
+        setup();
+    }
 
-        String titleKey = isClan ? "gui.comparison.clan-title" : "gui.comparison.title";
-        String defaultTitle = isClan ? "&6⚔️ Сравнение кланов" : "&6⚔️ Сравнение игроков";
-        String title = plugin.getConfig().getString(titleKey, defaultTitle);
-        
-        this.inventory = Bukkit.createInventory(this, 54, TextUtil.parse(title));
+    // Constructor for Clan vs Clan comparison
+    public PlayerComparisonGui(LoveLeaderboards plugin, Player viewer, String viewerClanName, String targetClanName, String category, TimePeriod period) {
+        this.plugin = plugin;
+        this.viewer = viewer;
+        this.targetPlayer = null;
+        this.viewerClanName = viewerClanName;
+        this.targetClanName = targetClanName;
+        this.entityType = "clan";
+        this.currentCategory = category != null ? category : "clan.wealth";
+        this.currentPeriod = period != null ? period : TimePeriod.ALL_TIME;
+
+        String title = plugin.getConfig().getString("gui.comparison.clan-title", "&6⚔️ Сравнение кланов");
+        int size = plugin.getConfig().getInt("gui.comparison.size", 27);
+        this.inventory = Bukkit.createInventory(this, size, TextUtil.parse(title));
         setup();
     }
 
     private void setup() {
-        // gui-gen-4 Header (0-8)
-        inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
-            .skullOwner(viewer.getUniqueId())
-            .name("&e" + viewer.getName())
-            .lore("", "&7Ваш профиль")
-            .build());
+        boolean isClanMode = "clan".equalsIgnoreCase(entityType);
+
+        // Slot 0: Viewer Profile or Clan Banner
+        if (isClanMode) {
+            inventory.setItem(0, new ItemBuilder(Material.RED_BANNER)
+                .name("&eВаш клан: &a" + (viewerClanName != null ? viewerClanName : "Без клана"))
+                .lore("", "&7Профиль вашего клана")
+                .build());
+        } else {
+            inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
+                .skullOwner(viewer.getUniqueId())
+                .name("&e" + viewer.getName())
+                .lore("", "&7Ваш профиль", "&a⭐ Это вы!")
+                .build());
+        }
 
         inventory.setItem(1, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(2, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(3, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
 
-        String periodB64 = plugin.getConfig().getString("gui.buttons.period", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19");
+        // Slot 4: Period selector
+        String periodB64 = getButtonHead(plugin, "period");
         inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(periodB64)
             .name("&eПериод: " + currentPeriod.getDisplayName())
             .lore("", currentPeriod.getDescription(), "", "&a▶ Нажмите для смены периода")
             .build());
 
+        // Slot 5: Category selector (Filter)
         Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
         String catName = catOpt.map(Category::displayName).orElse(currentCategory);
-
-        String categoryB64 = plugin.getConfig().getString("gui.buttons.category", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=");
+        String categoryB64 = getButtonHead(plugin, "category");
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(categoryB64)
             .name("&eКатегория: " + catName)
@@ -88,37 +120,41 @@ public class PlayerComparisonGui extends BaseGui {
         inventory.setItem(6, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         inventory.setItem(7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
 
-        inventory.setItem(8, new ItemBuilder(Material.PLAYER_HEAD)
-            .skullOwner(target.getUniqueId())
-            .name("&c" + (target.getName() != null ? target.getName() : "Unknown"))
-            .lore("", "&7Профиль оппонента")
-            .build());
+        // Slot 8: Target Profile or Target Clan Banner
+        if (isClanMode) {
+            inventory.setItem(8, new ItemBuilder(Material.RED_BANNER)
+                .name("&cКлан оппонента: &f" + (targetClanName != null ? targetClanName : "Unknown"))
+                .lore("", "&7Профиль клана оппонента")
+                .build());
+        } else {
+            String targetName = targetPlayer != null && targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown";
+            inventory.setItem(8, new ItemBuilder(Material.PLAYER_HEAD)
+                .skullOwner(targetPlayer != null ? targetPlayer.getUniqueId() : viewer.getUniqueId())
+                .name("&c" + targetName)
+                .lore("", "&7Профиль оппонента")
+                .build());
+        }
 
-        // Row 1 (9-17): PURE GLASS ROW (gui-gen-4 Rule 4)
-        for (int i = 9; i <= 17; i++) {
+        // Footer (18-26) for 27-slot menu (gui-gen-4 Rule 7)
+        for (int i = 18; i < 25; i++) {
             inventory.setItem(i, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         }
 
-        // Footer (45-53)
-        for (int i = 45; i < 52; i++) {
-            inventory.setItem(i, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        }
-
-        // Slot 52: Back button
+        // Slot 25: Back button
         if (GuiNavigationManager.hasHistory(viewer)) {
-            String backB64 = plugin.getConfig().getString("gui.buttons.back", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmM2NTEyMjI1NWMwNDY3ZmFlNzA5ODcyODRmOTc2YWMxYWUzN2VjZTQ2YmMzZmNhMjdjZTMyN2JiMWE3ZCJ9fX0=");
-            inventory.setItem(52, new ItemBuilder(Material.PLAYER_HEAD)
+            String backB64 = getButtonHead(plugin, "back");
+            inventory.setItem(25, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(backB64)
                 .name("&e◀ Назад")
                 .lore("", "&7Вернуться в предыдущее меню", "", "&a▶ Нажмите для возврата")
                 .build());
         } else {
-            inventory.setItem(52, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+            inventory.setItem(25, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
         }
 
-        // Slot 53: Close button
-        String closeB64 = plugin.getConfig().getString("gui.buttons.close", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=");
-        inventory.setItem(53, new ItemBuilder(Material.PLAYER_HEAD)
+        // Slot 26: Close button (always last slot in 27-slot menu)
+        String closeB64 = getButtonHead(plugin, "close");
+        inventory.setItem(26, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
             .build());
@@ -128,101 +164,104 @@ public class PlayerComparisonGui extends BaseGui {
 
     private void loadContent() {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            Comparison comp = plugin.getLeaderboardManager().compareWithPlayer(
-                viewer.getUniqueId(), viewer.getName(),
-                target.getUniqueId(), target.getName() == null ? "Unknown" : target.getName(),
-                currentCategory,
-                currentPeriod.getDbKey()
-            );
+            boolean isClanMode = "clan".equalsIgnoreCase(entityType);
+            Comparison comp;
+
+            if (isClanMode) {
+                String vClan = viewerClanName != null ? viewerClanName : "Empty";
+                String tClan = targetClanName != null ? targetClanName : "Empty";
+                String vId = plugin.getPlayerClanId(viewer.getUniqueId());
+                if (vId == null) vId = vClan;
+                String tId = tClan;
+
+                comp = plugin.getLeaderboardManager().compareEntities("clan", vId, vClan, tId, tClan, currentCategory, currentPeriod.getDbKey());
+            } else {
+                String tName = targetPlayer != null && targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown";
+                UUID tUuid = targetPlayer != null ? targetPlayer.getUniqueId() : viewer.getUniqueId();
+
+                comp = plugin.getLeaderboardManager().compareWithPlayer(viewer.getUniqueId(), viewer.getName(), tUuid, tName, currentCategory, currentPeriod.getDbKey());
+            }
 
             PlayerStats s1 = comp.stats1();
             PlayerStats s2 = comp.stats2();
 
             Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
             String catName = catOpt.map(Category::displayName).orElse(currentCategory);
-            String scoreUnit = catOpt.map(Category::getScoreUnit).orElse("Очки");
-            boolean isClan = catOpt.map(Category::isClanCategory).orElse(false);
+            String scoreUnit = catOpt.map(Category::getScoreUnit).orElse(isClanMode ? "Мощь" : "Очки");
 
             double diff = s1.score() - s2.score();
             String diffStr = diff == 0 ? "&7Показатели одинаковы!" : (diff > 0 ? "&aВы опережаете на " + (long)diff + " " + scoreUnit : "&cВы отстаете на " + (long)Math.abs(diff) + " " + scoreUnit);
 
             Bukkit.getScheduler().runTask(plugin, () -> {
-                // Clear work area (18-44)
-                for (int i = 18; i <= 44; i++) {
+                // Clear work area (9-17) for 27-slot menu (gui-gen-4 Rule 8)
+                for (int i = 9; i <= 17; i++) {
                     inventory.setItem(i, null);
                 }
 
-                // Left side: Viewer stats (Slot 20)
-                inventory.setItem(20, new ItemBuilder(Material.PLAYER_HEAD)
-                    .skullOwner(viewer.getUniqueId())
-                    .name("&e" + viewer.getName())
-                    .lore(
-                        "",
-                        "&7Категория: &f" + catName,
-                        "&7Период: " + currentPeriod.getDisplayName(),
-                        "",
-                        isClan ? "&7Ранг вашего клана: &e#" + (s1.rank() > 0 ? s1.rank() : "Не в топе")
-                               : "&7Ваш ранг: &e#" + (s1.rank() > 0 ? s1.rank() : "Не в топе"),
-                        "&7" + scoreUnit + ": &a" + (long) s1.score()
-                    ).build());
+                // Left side: Viewer / Viewer Clan stats (Slot 11)
+                if (isClanMode) {
+                    inventory.setItem(11, new ItemBuilder(Material.RED_BANNER)
+                        .name("&eКлан: " + (viewerClanName != null ? viewerClanName : "Без клана"))
+                        .lore(
+                            "",
+                            "&7Категория: &f" + catName,
+                            "&7Период: " + currentPeriod.getDisplayName(),
+                            "",
+                            "&7Ранг вашего клана: &e#" + (s1.rank() > 0 ? s1.rank() : "Не в топе"),
+                            "&7" + scoreUnit + ": &a" + (long) s1.score()
+                        ).build());
+                } else {
+                    inventory.setItem(11, new ItemBuilder(Material.PLAYER_HEAD)
+                        .skullOwner(viewer.getUniqueId())
+                        .name("&e" + viewer.getName())
+                        .lore(
+                            "",
+                            "&7Категория: &f" + catName,
+                            "&7Период: " + currentPeriod.getDisplayName(),
+                            "",
+                            "&7Ваш ранг: &e#" + (s1.rank() > 0 ? s1.rank() : "Не в топе"),
+                            "&7" + scoreUnit + ": &a" + (long) s1.score()
+                        ).build());
+                }
 
-                // Center: Comparison Summary (Slot 22)
-                inventory.setItem(22, new ItemBuilder(Material.PAPER)
+                // Center: Comparison Summary (Slot 13)
+                String leftName = isClanMode ? viewerClanName : viewer.getName();
+                String rightName = isClanMode ? targetClanName : (targetPlayer != null && targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown");
+                inventory.setItem(13, new ItemBuilder(Material.PAPER)
                     .name("&6⚔️ Итог сравнения")
                     .lore(
                         "",
-                        "&e" + viewer.getName() + " &7vs &c" + (target.getName() != null ? target.getName() : "Unknown"),
+                        "&e" + leftName + " &7vs &c" + rightName,
                         "&7Ранг: &e#" + (s1.rank() > 0 ? s1.rank() : "N/A") + " &7| &c#" + (s2.rank() > 0 ? s2.rank() : "N/A"),
                         "&7" + scoreUnit + ": &e" + (long) s1.score() + " &7| &c" + (long) s2.score(),
                         "",
                         diffStr
                     ).build());
 
-                // Right side: Target stats (Slot 24)
-                inventory.setItem(24, new ItemBuilder(Material.PLAYER_HEAD)
-                    .skullOwner(target.getUniqueId())
-                    .name("&c" + (target.getName() != null ? target.getName() : "Unknown"))
-                    .lore(
-                        "",
-                        "&7Категория: &f" + catName,
-                        "&7Период: " + currentPeriod.getDisplayName(),
-                        "",
-                        isClan ? "&7Ранг клана: &c#" + (s2.rank() > 0 ? s2.rank() : "Не в топе")
-                               : "&7Ранг: &c#" + (s2.rank() > 0 ? s2.rank() : "Не в топе"),
-                        "&7" + scoreUnit + ": &c" + (long) s2.score()
-                    ).build());
-
-                // Quick category switching row (Slots 29..33)
-                List<Category> allCats = plugin.getCategoryManager().getAllCategories().stream()
-                    .filter(Category::enabled)
-                    .toList();
-
-                int[] quickSlots = {29, 30, 31, 32, 33};
-                for (int i = 0; i < quickSlots.length && i < allCats.size(); i++) {
-                    Category cat = allCats.get(i);
-                    boolean isSelected = cat.name().equalsIgnoreCase(currentCategory);
-                    Material mat = cat.isClanCategory() ? Material.RED_BANNER : Material.PLAYER_HEAD;
-                    ItemBuilder builder = new ItemBuilder(mat);
-
-                    if (!cat.isClanCategory()) {
-                        String defaultCatB64 = switch (cat.name().toLowerCase()) {
-                            case "kills" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
-                            case "bounty-completed" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-                            default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
-                        };
-                        String catHead = plugin.getConfig().getString("gui.buttons.categories." + cat.name(), defaultCatB64);
-                        builder.base64Head(catHead);
-                    }
-
-                    builder.name((isSelected ? "&a&l▶ " : "&e") + cat.displayName())
+                // Right side: Target / Target Clan stats (Slot 15)
+                if (isClanMode) {
+                    inventory.setItem(15, new ItemBuilder(Material.RED_BANNER)
+                        .name("&cКлан: " + (targetClanName != null ? targetClanName : "Unknown"))
                         .lore(
                             "",
-                            "&7Статус: " + (isSelected ? "&aВыбрано" : "&7Выбрать"),
+                            "&7Категория: &f" + catName,
+                            "&7Период: " + currentPeriod.getDisplayName(),
                             "",
-                            "&a▶ Нажмите для сравнения в этой категории"
-                        );
-
-                    inventory.setItem(quickSlots[i], builder.build());
+                            "&7Ранг клана оппонента: &c#" + (s2.rank() > 0 ? s2.rank() : "Не в топе"),
+                            "&7" + scoreUnit + ": &c" + (long) s2.score()
+                        ).build());
+                } else {
+                    inventory.setItem(15, new ItemBuilder(Material.PLAYER_HEAD)
+                        .skullOwner(targetPlayer != null ? targetPlayer.getUniqueId() : viewer.getUniqueId())
+                        .name("&c" + rightName)
+                        .lore(
+                            "",
+                            "&7Категория: &f" + catName,
+                            "&7Период: " + currentPeriod.getDisplayName(),
+                            "",
+                            "&7Ранг: &c#" + (s2.rank() > 0 ? s2.rank() : "Не в топе"),
+                            "&7" + scoreUnit + ": &c" + (long) s2.score()
+                        ).build());
                 }
             });
         });
@@ -231,43 +270,38 @@ public class PlayerComparisonGui extends BaseGui {
     @Override
     public void handleClick(InventoryClickEvent event) {
         int slot = event.getSlot();
+        boolean isClanMode = "clan".equalsIgnoreCase(entityType);
 
         if (slot == 4) {
             TimePeriod nextPeriod = currentPeriod.next();
-            viewer.openInventory(new PlayerComparisonGui(plugin, viewer, target, currentCategory, nextPeriod).getInventory());
+            if (isClanMode) {
+                viewer.openInventory(new PlayerComparisonGui(plugin, viewer, viewerClanName, targetClanName, currentCategory, nextPeriod).getInventory());
+            } else {
+                viewer.openInventory(new PlayerComparisonGui(plugin, viewer, targetPlayer, currentCategory, nextPeriod).getInventory());
+            }
             return;
         }
 
         if (slot == 5) {
-            // Cycle category in-place
+            // Cycle category in-place for active entityType
             boolean forward = !event.isRightClick();
-            String nextCat = plugin.getCategoryManager().getNextCategory(currentCategory, "player", forward);
-            viewer.openInventory(new PlayerComparisonGui(plugin, viewer, target, nextCat, currentPeriod).getInventory());
+            String nextCat = plugin.getCategoryManager().getNextCategory(currentCategory, entityType, forward);
+            if (isClanMode) {
+                viewer.openInventory(new PlayerComparisonGui(plugin, viewer, viewerClanName, targetClanName, nextCat, currentPeriod).getInventory());
+            } else {
+                viewer.openInventory(new PlayerComparisonGui(plugin, viewer, targetPlayer, nextCat, currentPeriod).getInventory());
+            }
             return;
         }
 
-        // Quick category selection (29..33)
-        List<Category> allCats = plugin.getCategoryManager().getAllCategories().stream()
-            .filter(Category::enabled)
-            .toList();
-
-        int[] quickSlots = {29, 30, 31, 32, 33};
-        for (int i = 0; i < quickSlots.length && i < allCats.size(); i++) {
-            if (quickSlots[i] == slot) {
-                Category cat = allCats.get(i);
-                viewer.openInventory(new PlayerComparisonGui(plugin, viewer, target, cat.name(), currentPeriod).getInventory());
-                return;
-            }
-        }
-
-        if (slot == 52) {
+        if (slot == 25) {
             if (GuiNavigationManager.hasHistory(viewer)) {
                 GuiNavigationManager.goBack(plugin, viewer);
             }
             return;
         }
 
-        if (slot == 53) {
+        if (slot == 26) {
             GuiNavigationManager.clearHistory(viewer);
             viewer.closeInventory();
         }
