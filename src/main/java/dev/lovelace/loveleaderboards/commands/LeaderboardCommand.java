@@ -38,6 +38,11 @@ public class LeaderboardCommand implements TabExecutor {
         }
 
         String sub = args[0].toLowerCase();
+        if (sub.equals("help")) {
+            sendHelp(player);
+            return true;
+        }
+
         if (sub.equals("compare")) {
             if (args.length < 2) {
                 player.sendMessage(TextUtil.parse("&cИспользование: /leaderboard compare <игрок>"));
@@ -72,11 +77,30 @@ public class LeaderboardCommand implements TabExecutor {
         return true;
     }
 
+    /**
+     * Единый формат списка команд (шапка/тело/подвал), в том же стиле, что и
+     * {@code /loveleaderboardsadmin} и справка других плагинов Love*-экосистемы.
+     */
+    private void sendHelp(Player player) {
+        player.sendMessage(TextUtil.parse("&6==========================================="));
+        player.sendMessage(TextUtil.parse("&6★ &lLoveLeaderboards &6★"));
+        player.sendMessage(TextUtil.parse("&e/leaderboard &7- Открыть главное меню лидербордов"));
+        player.sendMessage(TextUtil.parse("&e/leaderboard <категория> &7- Открыть топ по категории"));
+        player.sendMessage(TextUtil.parse("&e/leaderboard compare <игрок> &7- Сравнить статистику с игроком"));
+        player.sendMessage(TextUtil.parse("&e/leaderboard help &7- Показать это меню"));
+        if (player.hasPermission("loveleaderboards.admin")) {
+            player.sendMessage(TextUtil.parse("&e/loveleaderboardsadmin &7- Команды администратора"));
+        }
+        player.sendMessage(TextUtil.parse("&7Алиасы: &f/lb, /top, /loveleaderboards, /топ"));
+        player.sendMessage(TextUtil.parse("&6==========================================="));
+    }
+
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
             List<String> options = new ArrayList<>();
             options.add("compare");
+            options.add("help");
             for (Category cat : plugin.getCategoryManager().getAllCategories()) {
                 if (cat.enabled()) {
                     options.add(cat.name());

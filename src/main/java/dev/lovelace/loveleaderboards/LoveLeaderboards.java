@@ -1,7 +1,8 @@
 package dev.lovelace.loveleaderboards;
 
-import dev.lovelace.loveleaderboards.commands.LeaderboardAdminCommand;
+import dev.lovelace.loveleaderboards.commands.LeaderboardAdminRedirectCommand;
 import dev.lovelace.loveleaderboards.commands.LeaderboardCommand;
+import dev.lovelace.loveleaderboards.commands.LoveLeaderboardsAdminCommand;
 import dev.lovelace.loveleaderboards.integrations.PlaceholderAPIIntegration;
 import dev.lovelace.loveleaderboards.integrations.StatBusIntegration;
 import dev.lovelace.loveleaderboards.listeners.GuiListener;
@@ -70,9 +71,15 @@ public class LoveLeaderboards extends JavaPlugin {
         getCommand("leaderboard").setExecutor(userCmd);
         getCommand("leaderboard").setTabCompleter(userCmd);
 
-        LeaderboardAdminCommand adminCmd = new LeaderboardAdminCommand(this);
-        getCommand("leaderboardadmin").setExecutor(adminCmd);
-        getCommand("leaderboardadmin").setTabCompleter(adminCmd);
+        LoveLeaderboardsAdminCommand adminCmd = new LoveLeaderboardsAdminCommand(this);
+        getCommand("loveleaderboardsadmin").setExecutor(adminCmd);
+        getCommand("loveleaderboardsadmin").setTabCompleter(adminCmd);
+
+        // Старое имя команды оставлено зарегистрированным, но лишь перенаправляет
+        // на /loveleaderboardsadmin — чтобы не пропадать без объяснений для тех,
+        // кто наберёт его по привычке.
+        getCommand("leaderboardadmin").setExecutor(new LeaderboardAdminRedirectCommand(this));
+
         Bukkit.getPluginManager().registerEvents(new GuiListener(), this);
         Bukkit.getPluginManager().registerEvents(new LeaderboardEventListener(this), this);
         Bukkit.getPluginManager().registerEvents(new StandInteractListener(this), this);

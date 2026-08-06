@@ -1,6 +1,7 @@
 package dev.lovelace.loveleaderboards.gui;
 
 import dev.lovelace.loveleaderboards.LoveLeaderboards;
+import dev.lovelace.loveleaderboards.textures.HeadTextures;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -52,18 +53,16 @@ public abstract class BaseGui implements InventoryHolder {
         if (slot0Head != null && !slot0Head.isEmpty()) return slot0Head;
 
         return switch (k) {
-            case "type-player" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM2MzZWQ3In19fQ==";
-            case "type-clan" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0=";
-            case "period" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzVmYzFkYWRhOWM2NWE3YWJjZTM0MjQxNDBkM2FiMjI0ZmNjNTM5OGNiOGNmZDY3NWY0MzY4NjhiZTZmNTRmZCJ9fX0=";
-            case "category" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTQ3YWUyMDllOGE1MjU5MWNjMjBhYzBjOWVjNmE1Y2IzZGMwNGYyMzhhYzJkNzQzYjFkNTRmMTFlOWM1Yzg1In19fQ==";
-            case "comparison" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
-            case "prev-page" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0=";
-            case "next-page" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjgyYWQxYjRjY2RiNjZkNTkyNzJmMTc3YWMwZGRhZDE4YzA0NzJjNzcyNTM1ZTUwZmE5ZDkxNGIyMjFhNjc5NSJ9fX0=";
-            case "back" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODY1MmM2NTEyMjI1NWMwNDY3ZmFlNzA5ODcyODRmOTc2YWMxYWUzN2VjZTQ2YmMzZmNhMjdjZTMyN2JiMWE3ZCJ9fX0=";
-            case "close" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=";
-            case "no-clan" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTgzNTJhZjkyYWNhNzc0N2FjMjllNTE0MmFlOTEyYWVlMWViY2E5MDhiMzFjMWYxZTY4YzU5MmFhZjkyZTYzNiJ9fX0=";
-            case "empty-slot" -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZTgzNTJhZjkyYWNhNzc0N2FjMjllNTE0MmFlOTEyYWVlMWViY2E5MDhiMzFjMWYxZTY4YzU5MmFhZjkyZTYzNiJ9fX0=";
-            default -> "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0=";
+            case "type-player" -> HeadTextures.GUI_TYPE_PLAYER;
+            case "type-clan" -> HeadTextures.GUI_TYPE_CLAN;
+            case "period" -> HeadTextures.GUI_PERIOD;
+            case "category" -> HeadTextures.GUI_CATEGORY;
+            case "comparison", "prev-page" -> HeadTextures.GUI_COMPARISON;
+            case "next-page" -> HeadTextures.GUI_NEXT_PAGE;
+            case "back" -> HeadTextures.GUI_BACK;
+            case "close" -> HeadTextures.GUI_CLOSE;
+            case "no-clan", "empty-slot" -> HeadTextures.GUI_NO_CLAN;
+            default -> HeadTextures.GUI_DEFAULT;
         };
     }
 
