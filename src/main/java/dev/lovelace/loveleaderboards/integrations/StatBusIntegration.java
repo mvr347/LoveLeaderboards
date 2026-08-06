@@ -6,10 +6,15 @@ import dev.lovelace.loveleaderboards.LoveLeaderboards;
 import dev.lovelace.loveleaderboards.models.Category;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.plugin.EventExecutor;
 
 import java.util.UUID;
+import java.util.logging.Level;
 
 /**
  * Единственный слушатель метрик экосистемы. Раньше три отдельных класса рефлексией
@@ -61,45 +66,69 @@ public class StatBusIntegration implements Listener {
     }
 
     /**
+     * Регистрирует обработчик расформирования клана напрямую через {@link HandlerList}
+     * LoveClans, полученный рефлексией. <b>Нельзя</b> объявить это как обычный
+     * {@code @EventHandler}-метод с параметром {@code org.bukkit.event.Event} — Bukkit при
+     * регистрации слушателя ищет статический {@code getHandlerList()} у объявленного типа
+     * параметра, поднимаясь по иерархии классов, и у самого абстрактного {@link Event} такого
+     * метода нет. Это валит регистрацию {@code registerEvents(...)} целиком (не только этот
+     * метод) с {@code IllegalPluginAccessException: Unable to find handler list for event
+     * org.bukkit.event.Event. Static getHandlerList method required!} — именно это и не давало
+     * подключиться к LoveCore.
+     *
+     * <p>LoveClans — softdepend, поэтому биндимся к его событию рефлексией так же, как раньше
+     * это делал целый {@code LoveClansIntegration}, а не прямой ссылкой на класс события.
+     * Если LoveClans не установлен или класс события не найден — тихо пропускаем, остальная
+     * интеграция с LoveCore это не блокирует.</p>
+     */
+    public void registerClanDisbandBridge(LoveLeaderboards plugin) {
+        try {
+            Class<? extends Event> eventClass = Class.forName("me.lovelace.loveclans.api.events.ClanDisbandEvent")
+                    .asSubclass(Event.class);
+            // Confirms the class really carries the static getHandlerList() Bukkit needs, so a
+            // future LoveClans refactor fails loudly here (caught below) instead of resurrecting
+            // this exact bug through the back door.
+            eventClass.getMethod("getHandlerList");
+            EventExecutor executor = (listener, event) -> onClanDisband(event);
+            Bukkit.getPluginManager().registerEvent(eventClass, this, EventPriority.MONITOR, executor, plugin, true);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            plugin.getLogger().log(Level.FINE, "LoveClans clan-disband bridge unavailable", e);
+        }
+    }
+
+    /**
      * {@link StatSubject} клана несёт только UUID — имени в событии нет, а ни один оракул ядра
      * его не отдаёт ({@code ProfileOracle} резолвит клан только по игроку, не по id клана).
-     * Единственный источник правды — сам LoveClans; вызываем его рефлексией так же, как раньше
-     * это делал целый {@code LoveClansIntegration}, но теперь только ради имени, а не ради всех
-     * метрик разом — сама метрика уже пришла в событии.
+     * Единственный источник правды — сам LoveClans; методы события читаем рефлексией
+     * ({@code clan()}, {@code actorId()} у {@code ClanDisbandEvent}, {@code id()}/{@code name()}
+     * у {@code Clan}) — только ради имени, а не ради всех метрик разом, сама метрика уже пришла
+     * через {@link StatChangedEvent}.
      */
-    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
-    public void onGenericClanDisband(org.bukkit.event.Event event) {
-        String eventName = event.getClass().getSimpleName();
-        if (eventName.contains("ClanDisband") || eventName.contains("ClanDelete") || eventName.contains("ClanRemove") || eventName.contains("ClanDestroy")) {
-            try {
-                String clanId = null;
-                String clanName = null;
+    private void onClanDisband(Event event) {
+        try {
+            String clanId = null;
+            String clanName = null;
+            Object clan = event.getClass().getMethod("clan").invoke(event);
+            if (clan != null) {
                 try {
-                    Object clan = event.getClass().getMethod("getClan").invoke(event);
-                    if (clan != null) {
-                        try {
-                            Object idObj = clan.getClass().getMethod("id").invoke(clan);
-                            if (idObj != null) clanId = idObj.toString();
-                        } catch (Exception e) {
-                            plugin.getLogger().log(java.util.logging.Level.FINE, "Reflection getClan().id failed", e);
-                        }
-                        try {
-                            Object nameObj = clan.getClass().getMethod("name").invoke(clan);
-                            if (nameObj != null) clanName = nameObj.toString();
-                        } catch (Exception e) {
-                            plugin.getLogger().log(java.util.logging.Level.FINE, "Reflection getClan().name failed", e);
-                        }
-                    }
+                    Object idObj = clan.getClass().getMethod("id").invoke(clan);
+                    if (idObj != null) clanId = idObj.toString();
                 } catch (Exception e) {
-                    plugin.getLogger().log(java.util.logging.Level.FINE, "Reflection getClan failed", e);
+                    plugin.getLogger().log(Level.FINE, "Reflection clan().id() failed", e);
                 }
-
-                if (clanId != null || clanName != null) {
-                    plugin.getLeaderboardManager().removeClan(clanId, clanName);
+                try {
+                    Object nameObj = clan.getClass().getMethod("name").invoke(clan);
+                    if (nameObj != null) clanName = nameObj.toString();
+                } catch (Exception e) {
+                    plugin.getLogger().log(Level.FINE, "Reflection clan().name() failed", e);
                 }
-            } catch (Throwable t) {
-                plugin.getLogger().log(java.util.logging.Level.FINE, "Clan disband reflection handler failed", t);
             }
+
+            if (clanId != null || clanName != null) {
+                plugin.getLeaderboardManager().removeClan(clanId, clanName);
+            }
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.FINE, "Clan disband reflection handler failed", t);
         }
     }
 

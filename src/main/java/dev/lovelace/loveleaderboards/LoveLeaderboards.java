@@ -85,7 +85,9 @@ public class LoveLeaderboards extends JavaPlugin {
 
         if (Bukkit.getPluginManager().getPlugin("LoveCore") != null) {
             try {
-                Bukkit.getPluginManager().registerEvents(new StatBusIntegration(this), this);
+                StatBusIntegration statBusIntegration = new StatBusIntegration(this);
+                Bukkit.getPluginManager().registerEvents(statBusIntegration, this);
+                statBusIntegration.registerClanDisbandBridge(this);
                 getLogger().info("LoveCore integration: слушаем StatChangedEvent.");
             } catch (Throwable t) {
                 getLogger().warning("Не удалось подключиться к LoveCore: " + t.getMessage());
