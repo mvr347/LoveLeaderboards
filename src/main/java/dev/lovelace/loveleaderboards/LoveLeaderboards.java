@@ -16,6 +16,7 @@ import dev.lovelace.loveleaderboards.managers.LeaderboardManager;
 import dev.lovelace.loveleaderboards.managers.RewardsManager;
 import dev.lovelace.loveleaderboards.managers.UpdateQueueManager;
 import org.bukkit.Bukkit;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.time.LocalDateTime;
@@ -112,6 +113,7 @@ public class LoveLeaderboards extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        HandlerList.unregisterAll(this);
         if (updateQueueManager != null) {
             updateQueueManager.flushAll();
         }
