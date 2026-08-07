@@ -1,7 +1,7 @@
 name: LoveLeaderboards
 version: '${project.version}'
 main: dev.lovelace.loveleaderboards.LoveLeaderboards
-api-version: '1.21'
+api-version: '26.2'
 authors: [ "Antigravity" ]
 description: Advanced leaderboards plugin for Love ecosystem.
 
