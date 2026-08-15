@@ -56,7 +56,15 @@ public class HallOfFameManager {
                 String period = section.getString(key + ".period", "alltime");
                 int npcId = section.getInt(key + ".npc-id", -1);
                 String holoUuidStr = section.getString(key + ".hologram-uuid", null);
-                UUID holoUuid = holoUuidStr != null ? UUID.fromString(holoUuidStr) : null;
+                UUID holoUuid = null;
+                if (holoUuidStr != null) {
+                    try {
+                        holoUuid = UUID.fromString(holoUuidStr);
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Stand '" + key + "' in stands.yml has an invalid hologram-uuid ('"
+                                + holoUuidStr + "') — ignoring it; a new hologram will be spawned.");
+                    }
+                }
                 String type = section.getString(key + ".type", "all");
 
                 String worldName = section.getString(key + ".world");
@@ -242,7 +250,10 @@ public class HallOfFameManager {
     public void togglePeriod(LeaderboardStand stand) {
         stand.cycleNextPeriod();
         updateStand(stand);
-        saveStands();
+        // Players can trigger this on every shift-right-click; saveStands() does synchronous
+        // YAML disk I/O, so keep it off the main thread on this hot, player-driven path instead
+        // of blocking the event handler on every click.
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, this::saveStands);
     }
 
     private void spawnOrUpdateHologram(LeaderboardStand stand, String playerName, double score) {
