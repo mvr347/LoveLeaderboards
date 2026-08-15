@@ -376,10 +376,15 @@ public class DatabaseManager {
     }
 
     public void resetMonthlyLeaderboards() {
+        // The monthly bucket is stored under a date-derived key (e.g. "2026-08" from
+        // TimePeriod.MONTHLY.getDbKey()), never the literal string "monthly" — matching that
+        // literal here always matched zero rows, silently no-op'ing every scheduled/admin reset.
+        String monthlyKey = dev.lovelace.loveleaderboards.models.TimePeriod.MONTHLY.getDbKey();
         synchronized (dbLock) {
             if (connection == null) return;
             try (PreparedStatement ps = connection.prepareStatement(
-                    "UPDATE leaderboard_entries SET score = 0.0 WHERE time_period = 'monthly'")) {
+                    "UPDATE leaderboard_entries SET score = 0.0 WHERE time_period = ?")) {
+                ps.setString(1, monthlyKey);
                 int resetCount = ps.executeUpdate();
                 plugin.getLogger().info("Reset monthly leaderboards scores for " + resetCount + " entries.");
             } catch (SQLException e) {

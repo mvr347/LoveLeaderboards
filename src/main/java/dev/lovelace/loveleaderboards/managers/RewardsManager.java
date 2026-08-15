@@ -46,8 +46,16 @@ public class RewardsManager {
                     if (key.startsWith("rank-")) {
                         String rangeStr = key.substring(5);
                         String[] bounds = rangeStr.split("-");
-                        int min = Integer.parseInt(bounds[0]);
-                        int max = bounds.length > 1 ? Integer.parseInt(bounds[1]) : min;
+                        int min;
+                        int max;
+                        try {
+                            min = Integer.parseInt(bounds[0]);
+                            max = bounds.length > 1 ? Integer.parseInt(bounds[1]) : min;
+                        } catch (NumberFormatException e) {
+                            plugin.getLogger().warning("Invalid rewards rank range key '" + key + "' under rewards.categories."
+                                    + category + " — skipping.");
+                            continue;
+                        }
 
                         if (rank >= min && rank <= max) {
                             List<String> commands = ranksSec.getStringList(key + ".commands");
