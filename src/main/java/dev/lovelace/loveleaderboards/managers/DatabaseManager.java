@@ -210,15 +210,19 @@ public class DatabaseManager {
                 ps.setString(1, category);
                 ps.setString(2, entityType);
                 ps.setString(3, timePeriod);
-                ps.setInt(4, Math.max(1, limit));
+                int fetchLimit = Math.max(1, limit + 25);
+                ps.setInt(4, fetchLimit);
 
                 try (ResultSet rs = ps.executeQuery()) {
                     int currentRank = 1;
-                    while (rs.next()) {
+                    while (rs.next() && entries.size() < limit) {
                         String eId = rs.getString("entity_id");
                         String eName = rs.getString("entity_name");
 
                         if ("clan".equalsIgnoreCase(entityType) && !isClanActive(eId, eName)) {
+                            continue;
+                        }
+                        if ("player".equalsIgnoreCase(entityType) && dev.lovelace.loveleaderboards.integrations.VesuvioIntegration.isSuspect(eId)) {
                             continue;
                         }
 

@@ -103,6 +103,12 @@ public class LoveLeaderboards extends JavaPlugin {
             getLogger().info("LoveCore не найден — топы по бонусам, рейтингу, пивоварению и кланам не будут обновляться.");
         }
 
+        boolean vesuvioEnabled = getConfig().getBoolean("integrations.vesuvio.enabled", true);
+        dev.lovelace.loveleaderboards.integrations.VesuvioIntegration.setEnabled(vesuvioEnabled);
+        if (dev.lovelace.loveleaderboards.integrations.VesuvioIntegration.isAvailable()) {
+            getLogger().info("Vesuvio integration: фильтрация читеров и подозреваемых из лидербордов активна.");
+        }
+
         // 7. Monthly Reset Task
         startMonthlyTask();
 

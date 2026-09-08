@@ -76,6 +76,9 @@ integrations:
   placeholder-api:
     enabled: true
     cache-time: 30  # секунды
+  vesuvio:
+    enabled: true
+    hide-suspects: true
 
 # ====== ПРОИЗВОДИТЕЛЬНОСТЬ ======
 
