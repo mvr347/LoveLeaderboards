@@ -48,7 +48,19 @@ public final class HeadTextures {
      * Иконка стрелки «следующая страница» для пагинации.
      */
     public static final String GUI_NEXT_PAGE =
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjgyYWQxYjRjY2RiNjZkNTkyNzJmMTc3YWMwZGRhZDE4YzA0NzJjNzcyNTM1ZTUwZmE5ZDkxNGIyMjFhNjc5NSJ9fX0=";
+            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOGFhMTg3ZmVkZTg4ZGUwMDJjYmQ5MzA1NzVlYjdiYTQ4ZDNiMWEwNmQ5NjFiZGM1MzU4MDA3NTBhZjc2NDkyNiJ9fX0=";
+
+    /**
+     * Иконка стрелки «предыдущая страница» для пагинации.
+     */
+    public static final String GUI_PREV_PAGE =
+            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjZkYWI3MjcxZjRmZjA0ZDU0NDAyMTkwNjdhMTA5YjVjMGMxZDFlMDFlYzYwMmMwMDIwNDc2ZjdlYjYxMjE4MCJ9fX0=";
+
+    /**
+     * Иконка пустого места в таблице (в рейтинге нет игрока на этой позиции).
+     */
+    public static final String GUI_EMPTY_SLOT =
+            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjg4ODk0MjdlZWM2YTBlN2I1MDU2NjQxNWE4YjMxN2JkY2RmY2ZkYjU5MTEwYzc2ZTgwYWEyZTYzNGZmNTAyOCJ9fX0=";
 
     /**
      * Иконка кнопки «назад».
@@ -60,7 +72,7 @@ public final class HeadTextures {
      * Иконка кнопки «закрыть».
      */
     public static final String GUI_CLOSE =
-            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjc2NDMzZjRmZWQ2ZmMyYThjMzU5YzExZTUwOTZhZGE5OWU4ZjQxNGZmZmNmNzlkZDAxY2MyYjIzZDkyNGZhNyJ9fX0=";
+            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ==";
 
     /**
      * Заглушка «нет клана»; используется также для пустых слотов таблицы.
