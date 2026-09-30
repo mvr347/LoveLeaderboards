@@ -57,11 +57,13 @@ public abstract class BaseGui implements InventoryHolder {
             case "type-clan" -> HeadTextures.GUI_TYPE_CLAN;
             case "period" -> HeadTextures.GUI_PERIOD;
             case "category" -> HeadTextures.GUI_CATEGORY;
-            case "comparison", "prev-page" -> HeadTextures.GUI_COMPARISON;
+            case "comparison" -> HeadTextures.GUI_COMPARISON;
+            case "prev-page" -> HeadTextures.GUI_PREV_PAGE;
             case "next-page" -> HeadTextures.GUI_NEXT_PAGE;
             case "back" -> HeadTextures.GUI_BACK;
             case "close" -> HeadTextures.GUI_CLOSE;
-            case "no-clan", "empty-slot" -> HeadTextures.GUI_NO_CLAN;
+            case "no-clan" -> HeadTextures.GUI_NO_CLAN;
+            case "empty-slot" -> HeadTextures.GUI_EMPTY_SLOT;
             default -> HeadTextures.GUI_DEFAULT;
         };
     }
