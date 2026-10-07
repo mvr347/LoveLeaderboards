@@ -61,8 +61,8 @@ public class CategorySelectGui extends BaseGui {
         String typeB64 = getButtonHead(plugin, isClanView ? "type-clan" : "type-player");
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(typeB64)
-            .name("&eТип: &f" + (isClanView ? "👑 Кланы" : "👥 Игроки"))
-            .lore("", "&7Фильтр отображаемых категорий", "", "&a▶ Нажмите для переключения")
+            .name(MODE_SWITCH_NAME)
+            .lore(modeSwitchLore(List.of("Игроки", "Кланы"), isClanView ? 1 : 0))
             .build());
 
         if (compareTarget != null) {
@@ -161,13 +161,8 @@ public class CategorySelectGui extends BaseGui {
             null, currentPeriod, entityTypeFilter, compareTarget, 1
         );
 
-        if (slot == 2) {
-            GuiNavigationManager.pushState(viewer, currentState);
-            viewer.openInventory(new PlayerStatsGui(plugin, viewer, viewer, "kills", currentPeriod).getInventory());
-            return;
-        }
-
         if (slot == 3) {
+            // Two-option mode: both LMB and RMB toggle
             this.entityTypeFilter = "clan".equalsIgnoreCase(entityTypeFilter) ? "player" : "clan";
             setup();
             return;

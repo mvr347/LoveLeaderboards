@@ -2,10 +2,16 @@ package dev.lovelace.loveleaderboards.gui;
 
 import dev.lovelace.loveleaderboards.LoveLeaderboards;
 import dev.lovelace.loveleaderboards.textures.HeadTextures;
+import dev.lovelace.loveleaderboards.models.Category;
+import dev.lovelace.loveleaderboards.models.TimePeriod;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
 public abstract class BaseGui implements InventoryHolder {
     protected Inventory inventory;
@@ -96,5 +102,51 @@ public abstract class BaseGui implements InventoryHolder {
         if (val != null && !val.isEmpty()) return val;
 
         return getButtonHead(plugin, "category");
+    }
+
+    // ---- Header switchers ("members menu" style, see SwitcherLore) ----
+
+    protected static final String PERIOD_SWITCH_NAME = "&6Период";
+    protected static final String CATEGORY_SWITCH_NAME = "&6Категория";
+    protected static final String MODE_SWITCH_NAME = "&6Режим";
+
+    /** Lore for the period switcher: every period, current one marked. */
+    protected List<String> periodSwitchLore(TimePeriod current) {
+        List<String> names = Arrays.stream(TimePeriod.values()).map(TimePeriod::getDisplayName).toList();
+        return SwitcherLore.build(names, current.ordinal());
+    }
+
+    /** LMB = next period, RMB = previous period. */
+    protected TimePeriod cyclePeriod(TimePeriod current, boolean rightClick) {
+        TimePeriod[] values = TimePeriod.values();
+        return values[SwitcherLore.cycle(current.ordinal(), values.length, rightClick)];
+    }
+
+    /** Enabled categories of a type, in the same order CategoryManager#getNextCategory cycles through. */
+    protected List<Category> switchableCategories(LoveLeaderboards plugin, String entityType) {
+        String type = entityType != null ? entityType : "player";
+        return plugin.getCategoryManager().getAllCategories().stream()
+            .filter(Category::enabled)
+            .filter(c -> c.getEntityType().equalsIgnoreCase(type))
+            .sorted(Comparator.comparingInt(Category::sortOrder))
+            .toList();
+    }
+
+    /** Lore for the category switcher; windowed to +-3 around the current one when there are more than 7. */
+    protected List<String> categorySwitchLore(LoveLeaderboards plugin, String currentCategory, String entityType) {
+        List<Category> cats = switchableCategories(plugin, entityType);
+        int current = -1;
+        for (int i = 0; i < cats.size(); i++) {
+            if (cats.get(i).name().equalsIgnoreCase(currentCategory)) {
+                current = i;
+                break;
+            }
+        }
+        return SwitcherLore.build(cats.stream().map(Category::displayName).toList(), current);
+    }
+
+    /** Lore for a two-option mode switcher (both clicks toggle). */
+    protected List<String> modeSwitchLore(List<String> options, int current) {
+        return SwitcherLore.build(options, current);
     }
 }
