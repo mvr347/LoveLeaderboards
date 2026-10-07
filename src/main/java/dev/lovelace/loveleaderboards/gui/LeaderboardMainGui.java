@@ -89,41 +89,23 @@ public class LeaderboardMainGui extends BaseGui {
 
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(typeB64)
-            .name("&eТип: &f" + (isClanView ? "👑 Кланы" : "👥 Игроки"))
-            .lore(
-                "",
-                "&7Текущий режим топа: &f" + (isClanView ? "Топы Кланов" : "Топы Игроков"),
-                "",
-                "&a▶ Нажмите для переключения"
-            ).build());
+            .name(MODE_SWITCH_NAME)
+            .lore(modeSwitchLore(List.of("Игроки", "Кланы"), isClanView ? 1 : 0))
+            .build());
 
         // Slot 4: Time Period Switcher
-        String periodB64 = getButtonHead(plugin, "period");
         inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(periodB64)
-            .name("&eПериод: " + currentPeriod.getDisplayName())
-            .lore(
-                "",
-                currentPeriod.getDescription(),
-                "",
-                "&a▶ Нажмите для смены периода"
-            ).build());
+            .base64Head(getButtonHead(plugin, "period"))
+            .name(PERIOD_SWITCH_NAME)
+            .lore(periodSwitchLore(currentPeriod))
+            .build());
 
         // Slot 5: Category Switcher
-        String categoryB64 = getButtonHead(plugin, "category");
-        Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
-        String catName = catOpt.map(Category::displayName).orElse(currentCategory);
-
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(categoryB64)
-            .name("&eКатегория: " + catName)
-            .lore(
-                "",
-                "&7Текущий топ: &f" + catName,
-                "",
-                "&aЛКМ &7— следующая категория",
-                "&aПКМ &7— предыдущая категория"
-            ).build());
+            .base64Head(getButtonHead(plugin, "category"))
+            .name(CATEGORY_SWITCH_NAME)
+            .lore(categorySwitchLore(plugin, currentCategory, entityType))
+            .build());
 
         // Row 1 (9-17): PURE GLASS ROW (gui-gen-4 Rule 4)
         for (int i = 9; i <= 17; i++) {
@@ -464,8 +446,8 @@ public class LeaderboardMainGui extends BaseGui {
         }
 
         if (slot == 4) {
-            // Cycle period
-            TimePeriod nextPeriod = currentPeriod.next();
+            // Cycle period: LMB forward, RMB back
+            TimePeriod nextPeriod = cyclePeriod(currentPeriod, event.isRightClick());
             viewer.openInventory(new LeaderboardMainGui(plugin, viewer, currentCategory, nextPeriod, entityType, 1).getInventory());
             return;
         }

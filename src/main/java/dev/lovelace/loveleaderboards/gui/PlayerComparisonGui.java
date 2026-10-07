@@ -90,50 +90,25 @@ public class PlayerComparisonGui extends BaseGui {
                 .build());
         }
 
-        inventory.setItem(1, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        inventory.setItem(2, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        inventory.setItem(3, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        // Header controls: 2 buttons -> slots 3 and 5 (gui_gen rule 8); 1, 2, 4, 6, 7, 8 glass.
+        // The opponent is shown in the work zone (slot 15), so slot 8 stays glass.
+        for (int i : new int[] {1, 2, 4, 6, 7, 8}) {
+            inventory.setItem(i, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
+        }
 
-        // Slot 4: Period selector
-        String periodB64 = getButtonHead(plugin, "period");
-        inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(periodB64)
-            .name("&eПериод: " + currentPeriod.getDisplayName())
-            .lore("", currentPeriod.getDescription(), "", "&a▶ Нажмите для смены периода")
+        // Slot 3: Period switcher
+        inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
+            .base64Head(getButtonHead(plugin, "period"))
+            .name(PERIOD_SWITCH_NAME)
+            .lore(periodSwitchLore(currentPeriod))
             .build());
 
-        // Slot 5: Category selector (Filter)
-        Optional<Category> catOpt = plugin.getCategoryManager().getCategory(currentCategory);
-        String catName = catOpt.map(Category::displayName).orElse(currentCategory);
-        String categoryB64 = getButtonHead(plugin, "category");
+        // Slot 5: Category switcher
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
-            .base64Head(categoryB64)
-            .name("&eКатегория: " + catName)
-            .lore(
-                "",
-                "&7Текущая категория: &f" + catName,
-                "",
-                "&aЛКМ &7— следующая категория",
-                "&aПКМ &7— предыдущая категория"
-            ).build());
-
-        inventory.setItem(6, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-        inventory.setItem(7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
-
-        // Slot 8: Target Profile or Target Clan Banner
-        if (isClanMode) {
-            inventory.setItem(8, new ItemBuilder(Material.RED_BANNER)
-                .name("&cКлан оппонента: &f" + (targetClanName != null ? targetClanName : "Unknown"))
-                .lore("", "&7Профиль клана оппонента")
-                .build());
-        } else {
-            String targetName = targetPlayer != null && targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown";
-            inventory.setItem(8, new ItemBuilder(Material.PLAYER_HEAD)
-                .skullOwner(targetPlayer != null ? targetPlayer.getUniqueId() : viewer.getUniqueId())
-                .name("&c" + targetName)
-                .lore("", "&7Профиль оппонента")
-                .build());
-        }
+            .base64Head(getButtonHead(plugin, "category"))
+            .name(CATEGORY_SWITCH_NAME)
+            .lore(categorySwitchLore(plugin, currentCategory, entityType))
+            .build());
 
         // Footer (18-26) for 27-slot menu (gui-gen-4 Rule 7)
         for (int i = 18; i < 25; i++) {
@@ -272,8 +247,8 @@ public class PlayerComparisonGui extends BaseGui {
         int slot = event.getSlot();
         boolean isClanMode = "clan".equalsIgnoreCase(entityType);
 
-        if (slot == 4) {
-            TimePeriod nextPeriod = currentPeriod.next();
+        if (slot == 3) {
+            TimePeriod nextPeriod = cyclePeriod(currentPeriod, event.isRightClick());
             if (isClanMode) {
                 viewer.openInventory(new PlayerComparisonGui(plugin, viewer, viewerClanName, targetClanName, currentCategory, nextPeriod).getInventory());
             } else {

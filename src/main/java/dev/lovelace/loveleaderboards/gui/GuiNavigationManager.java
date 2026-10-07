@@ -32,7 +32,7 @@ public class GuiNavigationManager {
         public void open(LoveLeaderboards plugin, Player viewer) {
             switch (type) {
                 case MAIN_LEADERBOARD -> viewer.openInventory(new LeaderboardMainGui(plugin, viewer, category, period, entityType, page).getInventory());
-                case PLAYER_STATS -> viewer.openInventory(new PlayerStatsGui(plugin, viewer, targetPlayer != null ? targetPlayer : viewer, category, period).getInventory());
+                case PLAYER_STATS -> viewer.openInventory(new PlayerStatsGui(plugin, viewer, targetPlayer != null ? targetPlayer : viewer, category, period, entityType).getInventory());
                 case PLAYER_COMPARISON -> {
                     if (targetPlayer != null) {
                         viewer.openInventory(new PlayerComparisonGui(plugin, viewer, targetPlayer, category, period).getInventory());
