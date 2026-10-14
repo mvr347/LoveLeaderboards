@@ -53,7 +53,7 @@
         <dependency>
             <groupId>com.github.mvr347.LoveCore</groupId>
             <artifactId>lovecore-api</artifactId>
-            <version>fe15e0144e</version>
+            <version>ff8d28387d</version>
             <scope>provided</scope>
         </dependency>
         <!-- Paper API -->

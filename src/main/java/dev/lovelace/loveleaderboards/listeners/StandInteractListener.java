@@ -4,6 +4,7 @@ import dev.lovelace.loveleaderboards.LoveLeaderboards;
 import dev.lovelace.loveleaderboards.gui.LeaderboardMainGui;
 import dev.lovelace.loveleaderboards.models.LeaderboardStand;
 import dev.lovelace.loveleaderboards.models.TimePeriod;
+import dev.lovelace.loveleaderboards.utils.Notify;
 import dev.lovelace.loveleaderboards.utils.TextUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
@@ -57,7 +58,7 @@ public class StandInteractListener implements Listener {
 
             String messageTemplate = plugin.getConfig().getString("hall-of-fame.interaction.shift-click-message",
                     "&a[Зал Славы] &fПериод отображения переключен на: &e%period%");
-            player.sendMessage(TextUtil.colorize(messageTemplate.replace("%period%", periodName)));
+            Notify.event(player, TextUtil.parse(messageTemplate.replace("%period%", periodName)));
 
             String soundStr = plugin.getConfig().getString("hall-of-fame.interaction.shift-click-sound", "BLOCK_NOTE_BLOCK_PLING");
             float volume = (float) plugin.getConfig().getDouble("hall-of-fame.interaction.shift-click-sound-volume", 1.0);

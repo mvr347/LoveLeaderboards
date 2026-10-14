@@ -6,6 +6,7 @@ import dev.lovelace.loveleaderboards.models.LeaderboardEntry;
 import dev.lovelace.loveleaderboards.models.PlayerStats;
 import dev.lovelace.loveleaderboards.models.TimePeriod;
 import dev.lovelace.loveleaderboards.utils.ItemBuilder;
+import dev.lovelace.loveleaderboards.utils.Notify;
 import dev.lovelace.loveleaderboards.utils.TextUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -422,7 +423,7 @@ public class LeaderboardMainGui extends BaseGui {
                 String clanName = plugin.getPlayerClanName(viewer.getUniqueId());
                 if (clanName == null || clanName.isEmpty()) {
                     String noClanMsg = plugin.getConfig().getString("messages.no-clan", "&cУ вас ещё нет клана!");
-                    viewer.sendMessage(TextUtil.parse(noClanMsg));
+                    Notify.event(viewer, TextUtil.parse(noClanMsg));
                     return;
                 }
             }
@@ -488,12 +489,12 @@ public class LeaderboardMainGui extends BaseGui {
                             String viewerClanName = plugin.getPlayerClanName(viewer.getUniqueId());
                             if (viewerClanName == null || viewerClanName.isEmpty()) {
                                 String noClanMsg = plugin.getConfig().getString("messages.no-clan", "&cУ вас ещё нет клана!");
-                                viewer.sendMessage(TextUtil.parse(noClanMsg));
+                                Notify.event(viewer, TextUtil.parse(noClanMsg));
                                 return;
                             }
                             if (entry.entityName().equalsIgnoreCase(viewerClanName)) {
                                 String selfClanMsg = plugin.getConfig().getString("messages.comparison-self", "&cНельзя сравнивать свой клан с самим собой!");
-                                viewer.sendMessage(TextUtil.parse(selfClanMsg));
+                                Notify.event(viewer, TextUtil.parse(selfClanMsg));
                                 return;
                             }
                             GuiNavigationManager.pushState(viewer, currentState);
@@ -509,7 +510,7 @@ public class LeaderboardMainGui extends BaseGui {
                                 if (event.isRightClick()) {
                                     if (isSelf) {
                                         String selfMsg = plugin.getConfig().getString("messages.comparison-self", "&cНельзя сравнивать себя с самим собой!");
-                                        viewer.sendMessage(TextUtil.parse(selfMsg));
+                                        Notify.event(viewer, TextUtil.parse(selfMsg));
                                         return;
                                     }
                                     // Compare directly
