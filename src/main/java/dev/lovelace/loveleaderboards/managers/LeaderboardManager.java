@@ -9,7 +9,9 @@ import org.bukkit.Bukkit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LeaderboardManager {
     private final LoveLeaderboards plugin;
@@ -18,6 +20,15 @@ public class LeaderboardManager {
     private final CacheManager<String, List<LeaderboardEntry>> cacheManager;
     private final CacheManager<String, PlayerStats> statsCache;
     private final UpdateQueueManager updateQueue;
+    private final InFlightGuard<String, List<LeaderboardEntry>> topInFlight = new InFlightGuard<>();
+    private final InFlightGuard<String, Optional<PlayerStats>> statsInFlight = new InFlightGuard<>();
+    private final java.util.concurrent.Executor asyncExecutor;
+    /** Top lists somebody asked for recently; the periodic refresh keeps exactly these warm. */
+    private final java.util.concurrent.ConcurrentMap<String, HotTop> hotTops = new ConcurrentHashMap<>();
+    private final Set<String> dirtyCategories = ConcurrentHashMap.newKeySet();
+    private static final long HOT_IDLE_MS = 5 * 60_000L;
+
+    private record HotTop(String category, String entityType, String period, int limit, long lastRequested) {}
 
     public LeaderboardManager(LoveLeaderboards plugin, DatabaseManager databaseManager, 
                               CategoryManager categoryManager, UpdateQueueManager updateQueue,
@@ -28,6 +39,44 @@ public class LeaderboardManager {
         this.updateQueue = updateQueue;
         this.cacheManager = new CacheManager<>(cacheMaxSize, cacheTtlMs);
         this.statsCache = new CacheManager<>(cacheMaxSize, cacheTtlMs);
+        this.asyncExecutor = r -> Bukkit.getScheduler().runTaskAsynchronously(plugin, r);
+    }
+
+    /**
+     * One periodic async pass (replaces invalidating everything every flush): re-fetches the hot top
+     * lists, stale-while-revalidate, so PAPI/GUI readers on the main thread never see an empty miss.
+     */
+    public void refreshHotTops() {
+        long now = System.currentTimeMillis();
+        hotTops.values().removeIf(h -> now - h.lastRequested() > HOT_IDLE_MS);
+        dirtyCategories.clear();
+        for (HotTop h : hotTops.values()) {
+            String key = topKey(h.category(), h.entityType(), h.period(), h.limit());
+            topInFlight.load(key, () -> {
+                List<LeaderboardEntry> filled = fillEmptyRanks(
+                        databaseManager.getTopByCategory(h.category(), h.entityType(), h.period(), h.limit()),
+                        h.limit(), h.entityType(), h.category());
+                cacheManager.put(key, filled);
+                return filled;
+            }, asyncExecutor);
+        }
+    }
+
+    /** Called after a score batch: only stats of the touched categories are dropped; tops refresh periodically. */
+    public void invalidateCategories(Set<String> categories) {
+        if (categories == null || categories.isEmpty()) return;
+        dirtyCategories.addAll(categories);
+        statsCache.invalidateIf(k -> {
+            // key = type:id:category:period ; ids may contain ':' only for clan names, so match on segments
+            for (String c : categories) {
+                if (k.contains(":" + c + ":")) return true;
+            }
+            return false;
+        });
+    }
+
+    private static String topKey(String category, String entityType, String timePeriod, int limit) {
+        return String.format("%s:%s:%s:%s", category, entityType, timePeriod, limit);
     }
 
     public void updatePlayerScore(UUID uuid, String playerName, String category, double scoreDelta) {
@@ -67,25 +116,26 @@ public class LeaderboardManager {
     }
 
     public List<LeaderboardEntry> getTop(String category, String entityType, String timePeriod, int limit) {
-        String cacheKey = String.format("%s:%s:%s:%s", category, entityType, timePeriod, limit);
+        String cacheKey = topKey(category, entityType, timePeriod, limit);
+        hotTops.put(cacheKey, new HotTop(category, entityType, timePeriod, limit, System.currentTimeMillis()));
 
         Optional<List<LeaderboardEntry>> cached = cacheManager.get(cacheKey);
         if (cached.isPresent()) {
             return cached.get();
         }
 
-        if (!Bukkit.isPrimaryThread()) {
+        java.util.function.Supplier<List<LeaderboardEntry>> loader = () -> {
             List<LeaderboardEntry> top = databaseManager.getTopByCategory(category, entityType, timePeriod, limit);
             List<LeaderboardEntry> filled = fillEmptyRanks(top, limit, entityType, category);
             cacheManager.put(cacheKey, filled);
             return filled;
+        };
+
+        if (!Bukkit.isPrimaryThread()) {
+            return loader.get();
         } else {
-            // Return empty while fetching to not block main thread (PAPI)
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                List<LeaderboardEntry> top = databaseManager.getTopByCategory(category, entityType, timePeriod, limit);
-                List<LeaderboardEntry> filled = fillEmptyRanks(top, limit, entityType, category);
-                cacheManager.put(cacheKey, filled);
-            });
+            // Return empty while fetching to not block main thread (PAPI); concurrent misses share one query
+            topInFlight.load(cacheKey, loader, asyncExecutor);
             return new ArrayList<>();
         }
     }
@@ -149,7 +199,7 @@ public class LeaderboardManager {
             }
             return fetched;
         } else {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            statsInFlight.load(cacheKey, () -> {
                 Optional<PlayerStats> fetched = databaseManager.getEntityStats(entityType, entityId, category, timePeriodKey);
                 if (fetched.isPresent()) {
                     statsCache.put(cacheKey, fetched.get());
@@ -162,7 +212,8 @@ public class LeaderboardManager {
                     }
                     statsCache.put(cacheKey, new PlayerStats(id, "Unknown", 0, 0));
                 }
-            });
+                return fetched;
+            }, asyncExecutor);
             return Optional.empty();
         }
     }

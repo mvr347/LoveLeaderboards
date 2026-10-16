@@ -25,6 +25,7 @@ public class HallOfFameManager {
     private final LoveLeaderboards plugin;
     private final File standsFile;
     private YamlConfiguration standsConfig;
+    private final Object fileLock = new Object();
     private final Map<String, LeaderboardStand> stands = new ConcurrentHashMap<>();
     private org.bukkit.scheduler.BukkitTask refreshTask;
 
@@ -90,34 +91,47 @@ public class HallOfFameManager {
         refreshTask = Bukkit.getScheduler().runTaskTimer(plugin, this::updateAllStands, 100L, 600L);
     }
 
+    /** Saves stands.yml: snapshot is serialized on the calling (main) thread, the disk write goes async. */
     public void saveStands() {
-        if (standsConfig == null) {
-            standsConfig = new YamlConfiguration();
-        }
-        standsConfig.set("stands", null); // Clear
+        saveStands(true);
+    }
 
+    /** Use {@code async=false} only from onDisable, where the scheduler is no longer usable. */
+    public void saveStands(boolean async) {
+        // Build a fresh config instead of mutating the shared one: no race with async writers.
+        YamlConfiguration snapshot = new YamlConfiguration();
         for (LeaderboardStand stand : stands.values()) {
             String key = "stands." + stand.getId();
-            standsConfig.set(key + ".category", stand.getCategory());
-            standsConfig.set(key + ".position", stand.getPosition());
-            standsConfig.set(key + ".type", stand.getType());
-            standsConfig.set(key + ".period", stand.getCurrentPeriod());
-            standsConfig.set(key + ".npc-id", stand.getNpcId());
-            standsConfig.set(key + ".hologram-uuid", stand.getHologramEntityUuid() != null ? stand.getHologramEntityUuid().toString() : null);
+            snapshot.set(key + ".category", stand.getCategory());
+            snapshot.set(key + ".position", stand.getPosition());
+            snapshot.set(key + ".type", stand.getType());
+            snapshot.set(key + ".period", stand.getCurrentPeriod());
+            snapshot.set(key + ".npc-id", stand.getNpcId());
+            snapshot.set(key + ".hologram-uuid", stand.getHologramEntityUuid() != null ? stand.getHologramEntityUuid().toString() : null);
 
             Location loc = stand.getLocation();
-            standsConfig.set(key + ".world", loc.getWorld().getName());
-            standsConfig.set(key + ".x", loc.getX());
-            standsConfig.set(key + ".y", loc.getY());
-            standsConfig.set(key + ".z", loc.getZ());
-            standsConfig.set(key + ".yaw", loc.getYaw());
-            standsConfig.set(key + ".pitch", loc.getPitch());
+            snapshot.set(key + ".world", loc.getWorld().getName());
+            snapshot.set(key + ".x", loc.getX());
+            snapshot.set(key + ".y", loc.getY());
+            snapshot.set(key + ".z", loc.getZ());
+            snapshot.set(key + ".yaw", loc.getYaw());
+            snapshot.set(key + ".pitch", loc.getPitch());
         }
+        final String data = snapshot.saveToString();
+        if (async && plugin.isEnabled()) {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> writeStandsFile(data));
+        } else {
+            writeStandsFile(data);
+        }
+    }
 
-        try {
-            standsConfig.save(standsFile);
-        } catch (IOException e) {
-            plugin.getLogger().severe("Failed to save stands.yml: " + e.getMessage());
+    private void writeStandsFile(String data) {
+        synchronized (fileLock) {
+            try {
+                java.nio.file.Files.writeString(standsFile.toPath(), data, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                plugin.getLogger().severe("Failed to save stands.yml: " + e.getMessage());
+            }
         }
     }
 
@@ -253,7 +267,7 @@ public class HallOfFameManager {
         // Players can trigger this on every shift-right-click; saveStands() does synchronous
         // YAML disk I/O, so keep it off the main thread on this hot, player-driven path instead
         // of blocking the event handler on every click.
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, this::saveStands);
+        saveStands();
     }
 
     private void spawnOrUpdateHologram(LeaderboardStand stand, String playerName, double score) {
@@ -321,22 +335,28 @@ public class HallOfFameManager {
             Entity entity = Bukkit.getEntity(stand.getHologramEntityUuid());
             if (entity instanceof TextDisplay td && td.isValid()) {
                 textDisplay = td;
+                td.setPersistent(false);
             }
         }
 
         if (textDisplay == null) {
-            if (holoLoc.getWorld() == null || !holoLoc.getChunk().isLoaded()) {
+            if (holoLoc.getWorld() == null
+                    || !holoLoc.getWorld().isChunkLoaded(holoLoc.getBlockX() >> 4, holoLoc.getBlockZ() >> 4)
+                    || !holoLoc.getChunk().isEntitiesLoaded()) {
+                // Entities not loaded yet: the existing hologram may be there, spawning now would duplicate it.
                 return;
             }
             for (Entity nearby : holoLoc.getWorld().getNearbyEntities(holoLoc, 1.5, 1.5, 1.5)) {
                 if (nearby instanceof TextDisplay td && td.isValid()) {
                     textDisplay = td;
+                    td.setPersistent(false);
                     stand.setHologramEntityUuid(td.getUniqueId());
                     break;
                 }
             }
             if (textDisplay == null) {
-                TextDisplay newTd = (TextDisplay) holoLoc.getWorld().spawnEntity(holoLoc, EntityType.TEXT_DISPLAY);
+                // Non-persistent: never saved to the chunk, so crashes/restarts cannot leave orphan duplicates.
+                TextDisplay newTd = holoLoc.getWorld().spawn(holoLoc, TextDisplay.class, e -> e.setPersistent(false));
                 
                 String billboardStr = plugin.getConfig().getString("hall-of-fame.hologram.billboard", "CENTER");
                 try {

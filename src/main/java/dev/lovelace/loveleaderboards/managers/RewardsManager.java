@@ -7,6 +7,9 @@ import dev.lovelace.loveleaderboards.utils.TextUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 
+import dev.lovelace.loveleaderboards.models.TimePeriod;
+
+import java.time.YearMonth;
 import java.util.List;
 
 public class RewardsManager {
@@ -16,11 +19,20 @@ public class RewardsManager {
         this.plugin = plugin;
     }
 
-    public void issueMonthlyRewards() {
-        if (!plugin.getConfig().getBoolean("rewards.enabled", true)) return;
+    /**
+     * Pays rewards for the previous (finished) month, at most once per month. Must run off the main thread.
+     *
+     * @return true if this call paid out, false if disabled or the month was already paid
+     */
+    public boolean issueMonthlyRewards() {
+        if (!plugin.getConfig().getBoolean("rewards.enabled", true)) return false;
 
         ConfigurationSection categoriesSec = plugin.getConfig().getConfigurationSection("rewards.categories");
-        if (categoriesSec == null) return;
+        if (categoriesSec == null) return false;
+
+        String monthlyKey = TimePeriod.previousMonthKey(YearMonth.now());
+        // Claim first: the marker row is the idempotency guard across restarts and double triggers.
+        if (!plugin.getDatabaseManager().claimMonthRewards(monthlyKey)) return false;
 
         for (String category : categoriesSec.getKeys(false)) {
             int maxRank = 50; 
@@ -28,8 +40,6 @@ public class RewardsManager {
             Category catObj = plugin.getCategoryManager().getCategory(category).orElse(null);
             String entityType = catObj != null ? catObj.getEntityType() : "player";
             
-            // Query monthly top scores using the active monthly DB period key (e.g. 2026-08)
-            String monthlyKey = dev.lovelace.loveleaderboards.models.TimePeriod.MONTHLY.getDbKey();
             List<LeaderboardEntry> top = plugin.getLeaderboardManager().getTop(category, entityType, monthlyKey, maxRank);
             if (top.isEmpty() || (top.size() == 1 && top.get(0).entityName().equals("Свободное место"))) continue;
 
@@ -79,10 +89,13 @@ public class RewardsManager {
 
         // Broadcast notification
         String message = plugin.getConfig().getString("messages.rewards-given");
+        if (message != null) message = message.replace("%month%", monthlyKey);
+        final String finalMessage = message;
         if (message != null && !message.isEmpty()) {
             Bukkit.getScheduler().runTask(plugin, () -> {
-                Bukkit.getServer().sendMessage(TextUtil.parse(message));
+                Bukkit.getServer().sendMessage(TextUtil.parse(finalMessage));
             });
         }
+        return true;
     }
 }

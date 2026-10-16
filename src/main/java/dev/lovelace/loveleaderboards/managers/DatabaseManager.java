@@ -379,6 +379,50 @@ public class DatabaseManager {
         return Optional.empty();
     }
 
+    private static final String BATCH_ENTITY = "__batch__";
+    private static final String BATCH_CATEGORY = "__all__";
+
+    public boolean isMonthRewarded(String monthKey) {
+        synchronized (dbLock) {
+            if (connection == null) return true; // fail closed: never pay without a ledger
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT 1 FROM leaderboard_monthly_rewards WHERE year_month = ? AND entity_id = ? AND category = ? AND rewards_given = 1")) {
+                ps.setString(1, monthKey);
+                ps.setString(2, BATCH_ENTITY);
+                ps.setString(3, BATCH_CATEGORY);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next();
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().warning("isMonthRewarded failed: " + e.getMessage());
+                return true;
+            }
+        }
+    }
+
+    /**
+     * Atomically claims the reward payout for a month. Returns true only for the single caller that
+     * inserted the marker row, so a restart or a second trigger can never pay twice.
+     */
+    public boolean claimMonthRewards(String monthKey) {
+        synchronized (dbLock) {
+            if (connection == null) return false;
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "INSERT OR IGNORE INTO leaderboard_monthly_rewards (year_month, entity_id, entity_name, category, rewards_given, given_at) " +
+                    "VALUES (?, ?, ?, ?, 1, ?)")) {
+                ps.setString(1, monthKey);
+                ps.setString(2, BATCH_ENTITY);
+                ps.setString(3, BATCH_ENTITY);
+                ps.setString(4, BATCH_CATEGORY);
+                ps.setLong(5, System.currentTimeMillis() / 1000);
+                return ps.executeUpdate() > 0;
+            } catch (SQLException e) {
+                plugin.getLogger().warning("claimMonthRewards failed: " + e.getMessage());
+                return false;
+            }
+        }
+    }
+
     public void resetMonthlyLeaderboards() {
         // The monthly bucket is stored under a date-derived key (e.g. "2026-08" from
         // TimePeriod.MONTHLY.getDbKey()), never the literal string "monthly" — matching that

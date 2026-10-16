@@ -93,8 +93,9 @@ public class LoveLeaderboardsAdminCommand implements TabExecutor {
             }
             case "give-rewards" -> {
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                    plugin.getRewardsManager().issueMonthlyRewards();
-                    sender.sendMessage("§a[LoveLeaderboards] Ежемесячные награды выданы.");
+                    boolean paid = plugin.getRewardsManager().issueMonthlyRewards();
+                    sender.sendMessage(paid ? "§a[LoveLeaderboards] Ежемесячные награды за прошлый месяц выданы."
+                            : "§e[LoveLeaderboards] Награды за прошлый месяц уже выданы или отключены.");
                 });
             }
             case "removeclan" -> {
