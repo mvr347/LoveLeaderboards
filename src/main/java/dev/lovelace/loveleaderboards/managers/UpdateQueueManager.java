@@ -51,9 +51,15 @@ public class UpdateQueueManager {
         if (!batch.isEmpty()) {
             dbManager.batchUpdateScores(batch);
             if (plugin.getLeaderboardManager() != null) {
-                plugin.getLeaderboardManager().invalidateAllCaches();
+                plugin.getLeaderboardManager().invalidateCategories(categoriesOf(batch));
             }
         }
+    }
+
+    private static java.util.Set<String> categoriesOf(List<LeaderboardUpdate> batch) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (LeaderboardUpdate u : batch) out.add(u.category());
+        return out;
     }
 
     public synchronized void flushAll() {

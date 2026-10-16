@@ -48,6 +48,13 @@ public class CacheManager<K, V> {
         cache.remove(key);
     }
 
+    /** Removes every entry whose key matches the predicate. */
+    public void invalidateIf(java.util.function.Predicate<K> predicate) {
+        synchronized (cache) {
+            cache.keySet().removeIf(predicate);
+        }
+    }
+
     public void invalidateAll() {
         cache.clear();
     }

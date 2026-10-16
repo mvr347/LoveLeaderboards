@@ -1,6 +1,7 @@
 package dev.lovelace.loveleaderboards.models;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.temporal.IsoFields;
 
 public enum TimePeriod {
@@ -45,9 +46,19 @@ public enum TimePeriod {
         return switch (this) {
             case TODAY -> "today:" + now.toString();
             case WEEKLY -> "week:" + now.get(IsoFields.WEEK_BASED_YEAR) + "-" + String.format("%02d", now.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
-            case MONTHLY -> String.format("%04d-%02d", now.getYear(), now.getMonthValue());
+            case MONTHLY -> monthKey(YearMonth.from(now));
             case ALL_TIME -> "alltime";
         };
+    }
+
+    /** DB key of a month bucket, e.g. "2026-09". */
+    public static String monthKey(YearMonth ym) {
+        return String.format("%04d-%02d", ym.getYear(), ym.getMonthValue());
+    }
+
+    /** DB key of the month that ended before {@code today}'s month (rewards are paid for it). */
+    public static String previousMonthKey(YearMonth current) {
+        return monthKey(current.minusMonths(1));
     }
 
     public static TimePeriod fromString(String text) {

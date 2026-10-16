@@ -109,6 +109,10 @@ public class LoveLeaderboards extends JavaPlugin {
             getLogger().info("Vesuvio integration: фильтрация читеров и подозреваемых из лидербордов активна.");
         }
 
+        // One periodic async refresh of hot top lists (replaces cache wipe on every batch flush)
+        long refreshTicks = Math.max(20L, Math.min(cacheTtl / 2, 10_000L) / 50L);
+        Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> leaderboardManager.refreshHotTops(), refreshTicks, refreshTicks);
+
         // 7. Monthly Reset Task
         startMonthlyTask();
 
@@ -123,7 +127,7 @@ public class LoveLeaderboards extends JavaPlugin {
         }
         if (hallOfFameManager != null) {
             hallOfFameManager.removeAllHolograms();
-            hallOfFameManager.saveStands();
+            hallOfFameManager.saveStands(false);
         }
         if (leaderboardManager != null) {
             leaderboardManager.invalidateAllCaches();
@@ -165,15 +169,18 @@ public class LoveLeaderboards extends JavaPlugin {
                 int rewHour = getConfig().getInt("rewards.run-at.hour", 0);
                 int rewMin = getConfig().getInt("rewards.run-at.minute", 5);
 
-                if (now.getDayOfMonth() == rewDay && now.getHour() == rewHour && now.getMinute() == rewMin) {
-                    if (!currentYearMonth.equals(lastRewardsYearMonth)) {
-                        lastRewardsYearMonth = currentYearMonth;
-                        getLogger().info("Triggering scheduled monthly rewards for " + currentYearMonth);
-                        rewardsManager.issueMonthlyRewards();
+                // ">=" instead of "==": a server that was down at the exact minute catches up later,
+                // and the DB marker row guarantees the previous month is paid only once.
+                java.time.LocalDateTime due = now.withDayOfMonth(Math.min(rewDay, now.toLocalDate().lengthOfMonth()))
+                        .withHour(rewHour).withMinute(rewMin).withSecond(0).withNano(0);
+                if (!now.isBefore(due) && !currentYearMonth.equals(lastRewardsYearMonth)) {
+                    lastRewardsYearMonth = currentYearMonth;
+                    if (rewardsManager.issueMonthlyRewards()) {
+                        getLogger().info("Issued monthly rewards for the month before " + currentYearMonth);
                     }
                 }
             }
-        }, 20 * 60L, 20 * 60L); // Check every minute
+        }, 20 * 30L, 20 * 60L); // First check 30s after startup (reward catch-up), then every minute
     }
 
     public DatabaseManager getDatabaseManager() {
