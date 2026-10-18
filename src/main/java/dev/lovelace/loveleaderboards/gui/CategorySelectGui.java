@@ -41,7 +41,7 @@ public class CategorySelectGui extends BaseGui {
         this.entityTypeFilter = entityTypeFilter != null ? entityTypeFilter : "player";
         this.compareTarget = compareTarget;
 
-        String title = plugin.getConfig().getString("gui.category-select.title", "&6📁 Выбор категории");
+        String title = plugin.getConfig().getString("gui.category-select.title", "&6Выбор категории");
         this.inventory = Bukkit.createInventory(this, 54, TextUtil.parse(title));
         setup();
     }
@@ -69,7 +69,7 @@ public class CategorySelectGui extends BaseGui {
             String compareB64 = getButtonHead(plugin, "comparison");
             inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(compareB64)
-                .name("&6⚔️ Сравнение с: &e" + (compareTarget.getName() != null ? compareTarget.getName() : "Игрок"))
+                .name("&6Сравнение с &e" + (compareTarget.getName() != null ? compareTarget.getName() : "Игрок"))
                 .lore("", "&7Выберите категорию для сравнения")
                 .build());
         } else {
@@ -101,8 +101,8 @@ public class CategorySelectGui extends BaseGui {
             String backB64 = getButtonHead(plugin, "back");
             inventory.setItem(52, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(backB64)
-                .name("&e◀ Назад")
-                .lore("", "&7Вернуться в предыдущее меню", "", "&a▶ Нажмите для возврата")
+                .name("&cНазад")
+                .lore("&8&m─────────────────────", "&7Вернуться в предыдущее меню")
                 .build());
         } else {
             inventory.setItem(52, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
@@ -113,6 +113,7 @@ public class CategorySelectGui extends BaseGui {
         inventory.setItem(53, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
+            .lore("&8&m─────────────────────", "&7Закрыть текущее окно")
             .build());
 
         loadContent();
@@ -145,8 +146,8 @@ public class CategorySelectGui extends BaseGui {
                     "",
                     cat.description(),
                     "&7Тип: &f" + (cat.isClanCategory() ? "Кланы" : "Игроки"),
-                    "",
-                    "&a▶ Нажмите для выбора"
+                    "&8&m─────────────────────",
+                    "&aЛКМ &8— &7выбрать категорию"
                 );
             inventory.setItem(GRID_SLOTS[i], builder.build());
         }

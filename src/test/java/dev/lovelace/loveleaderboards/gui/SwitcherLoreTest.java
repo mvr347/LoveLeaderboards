@@ -44,7 +44,7 @@ class SwitcherLoreTest {
     void shortListShownInFull() {
         assertArrayEquals(new int[] {0, 7}, SwitcherLore.window(6, 7));
         List<String> lore = SwitcherLore.build(options(3), 1);
-        assertEquals(List.of("&7  Opt0", "&a▶ Opt1", "&7  Opt2", "", SwitcherLore.HINT), lore);
+        assertEquals(List.of("&7  Opt0", "&a▶ Opt1", "&7  Opt2", "&8&m─────────────────────", SwitcherLore.HINT), lore);
     }
 
     @Test

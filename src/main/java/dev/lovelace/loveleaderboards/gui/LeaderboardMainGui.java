@@ -70,7 +70,7 @@ public class LeaderboardMainGui extends BaseGui {
         this.entityType = resolvedType;
         this.page = Math.max(1, page);
 
-        String title = plugin.getConfig().getString("gui.main.title", "&6⭐ Таблица Лидеров");
+        String title = plugin.getConfig().getString("gui.main.title", "&6Таблица Лидеров");
         this.inventory = Bukkit.createInventory(this, 54, TextUtil.parse(title));
 
         setup();
@@ -123,8 +123,8 @@ public class LeaderboardMainGui extends BaseGui {
             String backB64 = getButtonHead(plugin, "back");
             inventory.setItem(52, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(backB64)
-                .name("&e◀ Назад")
-                .lore("", "&7Вернуться в предыдущее меню", "", "&a▶ Нажмите для возврата")
+                .name("&cНазад")
+                .lore("&8&m─────────────────────", "&7Вернуться в предыдущее меню")
                 .build());
         } else {
             inventory.setItem(52, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
@@ -135,6 +135,7 @@ public class LeaderboardMainGui extends BaseGui {
         inventory.setItem(53, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
+            .lore("&8&m─────────────────────", "&7Закрыть текущее окно")
             .build());
 
         loadContent();
@@ -341,9 +342,9 @@ public class LeaderboardMainGui extends BaseGui {
                                 "",
                                 "&7Позиция: &f#" + entry.rank(),
                                 "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                                "",
+                                "&8&m─────────────────────",
                                 "&a⭐ Это вы!",
-                                "&a▶ Нажмите для просмотра статистики"
+                                "&aЛКМ &8— &7посмотреть свою статистику"
                             );
                     } else {
                         itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
@@ -352,9 +353,9 @@ public class LeaderboardMainGui extends BaseGui {
                                 "",
                                 "&7Позиция: &f#" + entry.rank(),
                                 "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                                "",
-                                "&aЛКМ &7— статистику игрока",
-                                "&aПКМ &7— сравнить со мной"
+                                "&8&m─────────────────────",
+                                "&aЛКМ &8— &7статистика игрока",
+                                "&6ПКМ &8— &7сравнить со мной"
                             );
                     }
                     try {
@@ -373,8 +374,8 @@ public class LeaderboardMainGui extends BaseGui {
                 String prevB64 = getButtonHead(plugin, "prev-page");
                 prevItem = new ItemBuilder(Material.PLAYER_HEAD)
                     .base64Head(prevB64)
-                    .name("&e◀ Предыдущая страница")
-                    .lore("", "&7Страница " + (finalActualPage - 1) + " из " + finalMaxPages)
+                    .name("&eПредыдущая страница")
+                    .lore("&8&m─────────────────────", "&7Страница " + (finalActualPage - 1) + " из " + finalMaxPages, "&aЛКМ &8— &7перейти")
                     .build();
             }
 
@@ -383,8 +384,8 @@ public class LeaderboardMainGui extends BaseGui {
                 String nextB64 = getButtonHead(plugin, "next-page");
                 nextItem = new ItemBuilder(Material.PLAYER_HEAD)
                     .base64Head(nextB64)
-                    .name("&eСледующая страница ▶")
-                    .lore("", "&7Страница " + (finalActualPage + 1) + " из " + finalMaxPages)
+                    .name("&eСледующая страница")
+                    .lore("&8&m─────────────────────", "&7Страница " + (finalActualPage + 1) + " из " + finalMaxPages, "&aЛКМ &8— &7перейти")
                     .build();
             }
 

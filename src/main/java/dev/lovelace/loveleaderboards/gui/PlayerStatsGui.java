@@ -49,8 +49,8 @@ public class PlayerStatsGui extends BaseGui {
 
         boolean isSelf = this.targetPlayer.getUniqueId().equals(viewer.getUniqueId());
         String titleKey = isSelf ? "gui.player-stats.title" : "gui.player-stats.target-title";
-        String defaultTitle = isSelf ? "&6📊 Моя Статистика"
-                : "&6📊 Статистика: &e"
+        String defaultTitle = isSelf ? "&6Моя Статистика"
+                : "&6Статистика: &e"
                         + (this.targetPlayer.getName() != null ? this.targetPlayer.getName() : "Игрока");
         String title = plugin.getConfig().getString(titleKey, defaultTitle);
 
@@ -77,7 +77,7 @@ public class PlayerStatsGui extends BaseGui {
                             "",
                             "&7Статистика клана по категориям",
                             "&7Клан: &a" + clanName,
-                            "",
+                            "&8&m─────────────────────",
                             "&a⭐ Это ваш клан!")
                     .build());
         } else {
@@ -88,8 +88,8 @@ public class PlayerStatsGui extends BaseGui {
                             "",
                             "&7Профиль: &f" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"),
                             isSelf ? "&7Личная статистика по категориям" : "&7Статистика оппонента",
-                            "",
-                            isSelf ? "&a⭐ Это вы!" : "&a▶ Нажмите для сравнения со мной")
+                            "&8&m─────────────────────",
+                            isSelf ? "&a⭐ Это вы!" : "&aЛКМ &8— &7сравнить со мной")
                     .build());
         }
 
@@ -102,7 +102,7 @@ public class PlayerStatsGui extends BaseGui {
         List<String> modeLore = modeSwitchLore(List.of("Я", "Мой клан"), isClanMode ? 1 : 0);
         if (!hasClan) {
             modeLore = new ArrayList<>(modeLore.subList(0, 2));
-            modeLore.add("");
+            modeLore.add("&8&m─────────────────────");
             modeLore.add("&cВступление в клан разблокирует режим клана");
         }
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
@@ -137,8 +137,8 @@ public class PlayerStatsGui extends BaseGui {
             String backB64 = getButtonHead(plugin, "back");
             inventory.setItem(footer + 7, new ItemBuilder(Material.PLAYER_HEAD)
                     .base64Head(backB64)
-                    .name("&e◀ Назад")
-                    .lore("", "&7Вернуться в предыдущее меню", "", "&a▶ Нажмите для возврата")
+                    .name("&cНазад")
+                    .lore("&8&m─────────────────────", "&7Вернуться в предыдущее меню")
                     .build());
         } else {
             inventory.setItem(footer + 7, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
@@ -149,6 +149,7 @@ public class PlayerStatsGui extends BaseGui {
         inventory.setItem(size - 1, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(closeB64)
                 .name("&cЗакрыть")
+                .lore("&8&m─────────────────────", "&7Закрыть текущее окно")
                 .build());
 
         loadContent();
@@ -242,8 +243,8 @@ public class PlayerStatsGui extends BaseGui {
                                                     + (stats.rank() > 0 ? stats.rank() : "Не в топе")
                                             : "&7Ваше место: &e#" + (stats.rank() > 0 ? stats.rank() : "Не в топе"),
                                     "&7" + cat.getScoreUnit() + ": &a" + (long) stats.score(),
-                                    "",
-                                    "&a▶ Нажмите для открытия этого топа");
+                                    "&8&m─────────────────────",
+                                    "&aЛКМ &8— &7открыть этот топ");
                 } else {
                     builder.name(cat.displayName())
                             .lore(
@@ -254,9 +255,9 @@ public class PlayerStatsGui extends BaseGui {
                                             ? "&7Место клана: &e#" + (stats.rank() > 0 ? stats.rank() : "Не в топе")
                                             : "&7Место: &e#" + (stats.rank() > 0 ? stats.rank() : "Не в топе"),
                                     "&7" + cat.getScoreUnit() + ": &a" + (long) stats.score(),
-                                    "",
-                                    "&aЛКМ &7— открыть этот топ",
-                                    "&aПКМ &7— сравнить показания");
+                                    "&8&m─────────────────────",
+                                    "&aЛКМ &8— &7открыть этот топ",
+                                    "&6ПКМ &8— &7сравнить со мной");
                 }
                 builtItems.add(builder.build());
             }

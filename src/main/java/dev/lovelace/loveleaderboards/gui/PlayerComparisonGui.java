@@ -50,7 +50,7 @@ public class PlayerComparisonGui extends BaseGui {
         this.currentCategory = category != null ? category : "kills";
         this.currentPeriod = period != null ? period : TimePeriod.ALL_TIME;
 
-        String title = plugin.getConfig().getString("gui.comparison.title", "&6⚔️ Сравнение игроков");
+        String title = plugin.getConfig().getString("gui.comparison.title", "&6Сравнение игроков");
         int size = plugin.getConfig().getInt("gui.comparison.size", 27);
         this.inventory = Bukkit.createInventory(this, size, TextUtil.parse(title));
         setup();
@@ -67,7 +67,7 @@ public class PlayerComparisonGui extends BaseGui {
         this.currentCategory = category != null ? category : "clan.wealth";
         this.currentPeriod = period != null ? period : TimePeriod.ALL_TIME;
 
-        String title = plugin.getConfig().getString("gui.comparison.clan-title", "&6⚔️ Сравнение кланов");
+        String title = plugin.getConfig().getString("gui.comparison.clan-title", "&6Сравнение кланов");
         int size = plugin.getConfig().getInt("gui.comparison.size", 27);
         this.inventory = Bukkit.createInventory(this, size, TextUtil.parse(title));
         setup();
@@ -86,7 +86,7 @@ public class PlayerComparisonGui extends BaseGui {
             inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
                 .skullOwner(viewer.getUniqueId())
                 .name("&e" + viewer.getName())
-                .lore("", "&7Ваш профиль", "&a⭐ Это вы!")
+                .lore("", "&7Ваш профиль", "&8&m─────────────────────", "&a⭐ Это вы!")
                 .build());
         }
 
@@ -120,8 +120,8 @@ public class PlayerComparisonGui extends BaseGui {
             String backB64 = getButtonHead(plugin, "back");
             inventory.setItem(25, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(backB64)
-                .name("&e◀ Назад")
-                .lore("", "&7Вернуться в предыдущее меню", "", "&a▶ Нажмите для возврата")
+                .name("&cНазад")
+                .lore("&8&m─────────────────────", "&7Вернуться в предыдущее меню")
                 .build());
         } else {
             inventory.setItem(25, new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE).name(" ").build());
@@ -132,6 +132,7 @@ public class PlayerComparisonGui extends BaseGui {
         inventory.setItem(26, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(closeB64)
             .name("&cЗакрыть")
+            .lore("&8&m─────────────────────", "&7Закрыть текущее окно")
             .build());
 
         loadContent();
@@ -203,7 +204,7 @@ public class PlayerComparisonGui extends BaseGui {
                 String leftName = isClanMode ? viewerClanName : viewer.getName();
                 String rightName = isClanMode ? targetClanName : (targetPlayer != null && targetPlayer.getName() != null ? targetPlayer.getName() : "Unknown");
                 inventory.setItem(13, new ItemBuilder(Material.PAPER)
-                    .name("&6⚔️ Итог сравнения")
+                    .name("&6Итог сравнения")
                     .lore(
                         "",
                         "&e" + leftName + " &7vs &c" + rightName,

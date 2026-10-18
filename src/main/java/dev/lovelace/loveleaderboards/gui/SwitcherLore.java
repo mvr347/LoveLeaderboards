@@ -17,7 +17,7 @@ public final class SwitcherLore {
     public static final String CURRENT_PREFIX = "&a▶ ";
     public static final String OTHER_PREFIX = "&7  ";
     public static final String ELLIPSIS = "&7  …";
-    public static final String HINT = "&eЛКМ &7- дальше, &eПКМ &7- назад";
+    public static final String HINT = "&aЛКМ &8— &7дальше, &6ПКМ &8— &7назад";
 
     private static final Pattern COLOR_CODES = Pattern.compile("(?i)[&§][0-9a-fk-or]");
 
@@ -64,7 +64,7 @@ public final class SwitcherLore {
             lore.add((i == current ? CURRENT_PREFIX : OTHER_PREFIX) + name);
         }
         if (range[1] < options.size()) lore.add(ELLIPSIS);
-        lore.add("");
+        lore.add("&8&m─────────────────────");
         lore.add(HINT);
         return lore;
     }
