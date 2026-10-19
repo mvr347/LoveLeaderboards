@@ -21,6 +21,10 @@ public class LeaderboardEventListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         plugin.getLeaderboardManager().ensurePlayerExists(player.getUniqueId(), player.getName());
+        // One second after the join so the player is fully in the world when the reward commands run
+        org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (player.isOnline()) plugin.getRewardsManager().deliverPending(player);
+        }, 20L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

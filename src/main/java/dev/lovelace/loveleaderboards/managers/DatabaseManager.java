@@ -72,6 +72,19 @@ public class DatabaseManager {
                     UNIQUE(year_month, entity_id, category)
                 );
             """);
+            // 2026-10-19: награды победителям, которых не было в сети в момент выдачи; выполняются при входе игрока.
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS leaderboard_pending_rewards (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entity_id TEXT NOT NULL,
+                    year_month TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    score REAL NOT NULL DEFAULT 0,
+                    commands TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    UNIQUE(year_month, entity_id, category)
+                );
+            """);
         }
     }
 
@@ -419,6 +432,70 @@ public class DatabaseManager {
             } catch (SQLException e) {
                 plugin.getLogger().warning("claimMonthRewards failed: " + e.getMessage());
                 return false;
+            }
+        }
+    }
+
+    /** Stores a reward for an offline winner; the unique key makes a repeated payout of the same month harmless. */
+    public void addPendingReward(String entityId, String monthKey, String category, double score, List<String> commands) {
+        synchronized (dbLock) {
+            if (connection == null) return;
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "INSERT OR IGNORE INTO leaderboard_pending_rewards (entity_id, year_month, category, score, commands, created_at) " +
+                    "VALUES (?, ?, ?, ?, ?, ?)")) {
+                ps.setString(1, entityId);
+                ps.setString(2, monthKey);
+                ps.setString(3, category);
+                ps.setDouble(4, score);
+                ps.setString(5, String.join("\n", commands));
+                ps.setLong(6, System.currentTimeMillis() / 1000);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().warning("addPendingReward failed: " + e.getMessage());
+            }
+        }
+    }
+
+    /** One stored reward: the player-less command templates and the score they were earned with. */
+    public record PendingReward(String category, String monthKey, double score, List<String> commands) {}
+
+    /** Returns and deletes everything waiting for this player. */
+    public List<PendingReward> takePendingRewards(String entityId) {
+        List<PendingReward> result = new ArrayList<>();
+        synchronized (dbLock) {
+            if (connection == null) return result;
+            try (PreparedStatement select = connection.prepareStatement(
+                    "SELECT category, year_month, score, commands FROM leaderboard_pending_rewards WHERE entity_id = ? ORDER BY id");
+                 PreparedStatement delete = connection.prepareStatement(
+                         "DELETE FROM leaderboard_pending_rewards WHERE entity_id = ?")) {
+                select.setString(1, entityId);
+                try (ResultSet rs = select.executeQuery()) {
+                    while (rs.next()) {
+                        result.add(new PendingReward(rs.getString(1), rs.getString(2), rs.getDouble(3),
+                                java.util.Arrays.asList(rs.getString(4).split("\n"))));
+                    }
+                }
+                if (!result.isEmpty()) {
+                    delete.setString(1, entityId);
+                    delete.executeUpdate();
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().warning("takePendingRewards failed: " + e.getMessage());
+                result.clear();
+            }
+        }
+        return result;
+    }
+
+    public void purgePendingRewards(int keepDays) {
+        synchronized (dbLock) {
+            if (connection == null) return;
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "DELETE FROM leaderboard_pending_rewards WHERE created_at < ?")) {
+                ps.setLong(1, System.currentTimeMillis() / 1000 - keepDays * 86400L);
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                plugin.getLogger().warning("purgePendingRewards failed: " + e.getMessage());
             }
         }
     }

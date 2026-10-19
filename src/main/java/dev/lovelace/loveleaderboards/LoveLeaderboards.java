@@ -61,6 +61,7 @@ public class LoveLeaderboards extends JavaPlugin {
 
         // 4.5 Rewards Manager
         rewardsManager = new RewardsManager(this);
+        rewardsManager.warnAboutBrokenCommands();
 
         // 4.6 Hall of Fame Manager
         hallOfFameManager = new HallOfFameManager(this);

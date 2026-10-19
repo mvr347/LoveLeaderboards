@@ -33,6 +33,7 @@ public class RewardsManager {
         String monthlyKey = TimePeriod.previousMonthKey(YearMonth.now());
         // Claim first: the marker row is the idempotency guard across restarts and double triggers.
         if (!plugin.getDatabaseManager().claimMonthRewards(monthlyKey)) return false;
+        plugin.getDatabaseManager().purgePendingRewards(plugin.getConfig().getInt("rewards.pending-keep-days", 60));
 
         for (String category : categoriesSec.getKeys(false)) {
             int maxRank = 50; 
@@ -70,16 +71,14 @@ public class RewardsManager {
                         if (rank >= min && rank <= max) {
                             List<String> commands = ranksSec.getStringList(key + ".commands");
                             
-                            // Execute reward commands on main server thread
-                            Bukkit.getScheduler().runTask(plugin, () -> {
-                                for (String cmd : commands) {
-                                    String finalCmd = cmd.replace("%player%", entry.entityName())
-                                                         .replace("%clan%", entry.entityName())
-                                                         .replace("%clan_name%", entry.entityName())
-                                                         .replace("%score%", String.valueOf((long) entry.score()));
-                                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCmd);
-                                }
-                            });
+                            boolean online = isOnline(entry.entityId());
+                            if (RewardCommands.shouldDefer(entityType, online)) {
+                                // Offline winner: the commands need the player online, so they wait for the next join.
+                                plugin.getDatabaseManager().addPendingReward(entry.entityId(), monthlyKey, category,
+                                        entry.score(), commands);
+                            } else {
+                                runCommands(commands, entry.entityName(), entry.score(), category, rank);
+                            }
                             break;
                         }
                     }
@@ -97,5 +96,56 @@ public class RewardsManager {
             });
         }
         return true;
+    }
+
+    private static boolean isOnline(String entityId) {
+        try {
+            return Bukkit.getPlayer(java.util.UUID.fromString(entityId)) != null;
+        } catch (IllegalArgumentException notAUuid) {
+            return false;
+        }
+    }
+
+    /** Runs the commands on the main thread; a failing command is logged and never stops the ones after it. */
+    private void runCommands(List<String> commands, String name, double score, String category, int rank) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            for (String cmd : commands) {
+                try {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), RewardCommands.render(cmd, name, score));
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Reward command failed (" + category + ", rank " + rank + "): '"
+                            + cmd + "' - " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    /** Delivers what was held back while the player was offline. Safe to call from any thread. */
+    public void deliverPending(org.bukkit.entity.Player player) {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            List<dev.lovelace.loveleaderboards.managers.DatabaseManager.PendingReward> pending =
+                    plugin.getDatabaseManager().takePendingRewards(player.getUniqueId().toString());
+            for (var reward : pending) {
+                runCommands(reward.commands(), player.getName(), reward.score(), reward.category(), 0);
+            }
+            if (!pending.isEmpty()) {
+                plugin.getLogger().info("Delivered " + pending.size() + " pending reward(s) to " + player.getName());
+            }
+        });
+    }
+
+    /** Warns once about reward commands that can never work (see {@link RewardCommands#usesLegacyCodesInComponentCommand}). */
+    public void warnAboutBrokenCommands() {
+        ConfigurationSection categoriesSec = plugin.getConfig().getConfigurationSection("rewards.categories");
+        if (categoriesSec == null) return;
+        for (String key : categoriesSec.getKeys(true)) {
+            if (!key.endsWith(".commands")) continue;
+            for (String cmd : categoriesSec.getStringList(key)) {
+                if (RewardCommands.usesLegacyCodesInComponentCommand(cmd)) {
+                    plugin.getLogger().warning("rewards.categories." + key + ": '" + cmd
+                            + "' uses '&' colour codes, but /title, /subtitle, /actionbar and /tellraw need a JSON text component.");
+                }
+            }
+        }
     }
 }
