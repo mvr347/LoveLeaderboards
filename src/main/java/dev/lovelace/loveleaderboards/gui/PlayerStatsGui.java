@@ -99,22 +99,22 @@ public class PlayerStatsGui extends BaseGui {
         }
 
         // Slot 3: Mode switcher ("Я" / "Мой клан"). Without a clan it only shows the current mode.
-        List<String> modeLore = modeSwitchLore(List.of("Я", "Мой клан"), isClanMode ? 1 : 0);
-        if (!hasClan) {
-            modeLore = new ArrayList<>(modeLore.subList(0, 2));
-            modeLore.add("&8&m─────────────────────");
-            modeLore.add("&cВступление в клан разблокирует режим клана");
-        }
+        List<String> modeOptions = List.of("Я", "Мой клан");
+        int modeIndex = isClanMode ? 1 : 0;
+        List<String> modeLore = hasClan
+                ? modeSwitchLore(modeOptions, modeIndex)
+                : modeSwitchLoreBlocked(modeOptions, modeIndex,
+                        isSelf ? "Вы не состоите в клане" : "У игрока нет клана", "переключить режим");
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(getButtonHead(plugin, isClanMode ? "type-clan" : "type-player"))
-                .name(MODE_SWITCH_NAME)
+                .name(modeSwitchName(modeOptions, modeIndex))
                 .lore(modeLore)
                 .build());
 
         // Slot 5: Period switcher
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(getButtonHead(plugin, "period"))
-                .name(PERIOD_SWITCH_NAME)
+                .name(periodSwitchName(currentPeriod))
                 .lore(periodSwitchLore(currentPeriod))
                 .build());
 

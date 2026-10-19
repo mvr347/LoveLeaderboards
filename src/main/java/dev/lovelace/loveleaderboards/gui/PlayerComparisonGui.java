@@ -99,14 +99,14 @@ public class PlayerComparisonGui extends BaseGui {
         // Slot 3: Period switcher
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(getButtonHead(plugin, "period"))
-            .name(PERIOD_SWITCH_NAME)
+            .name(periodSwitchName(currentPeriod))
             .lore(periodSwitchLore(currentPeriod))
             .build());
 
         // Slot 5: Category switcher
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(getButtonHead(plugin, "category"))
-            .name(CATEGORY_SWITCH_NAME)
+            .name(categorySwitchName(plugin, currentCategory))
             .lore(categorySwitchLore(plugin, currentCategory, entityType))
             .build());
 

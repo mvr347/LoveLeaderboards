@@ -88,23 +88,25 @@ public class LeaderboardMainGui extends BaseGui {
         boolean isClanView = "clan".equalsIgnoreCase(entityType);
         String typeB64 = getButtonHead(plugin, isClanView ? "type-clan" : "type-player");
 
+        List<String> modeOptions = List.of("Игроки", "Кланы");
+        int modeIndex = isClanView ? 1 : 0;
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(typeB64)
-            .name(MODE_SWITCH_NAME)
-            .lore(modeSwitchLore(List.of("Игроки", "Кланы"), isClanView ? 1 : 0))
+            .name(modeSwitchName(modeOptions, modeIndex))
+            .lore(modeSwitchLore(modeOptions, modeIndex))
             .build());
 
         // Slot 4: Time Period Switcher
         inventory.setItem(4, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(getButtonHead(plugin, "period"))
-            .name(PERIOD_SWITCH_NAME)
+            .name(periodSwitchName(currentPeriod))
             .lore(periodSwitchLore(currentPeriod))
             .build());
 
         // Slot 5: Category Switcher
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(getButtonHead(plugin, "category"))
-            .name(CATEGORY_SWITCH_NAME)
+            .name(categorySwitchName(plugin, currentCategory))
             .lore(categorySwitchLore(plugin, currentCategory, entityType))
             .build());
 

@@ -106,9 +106,26 @@ public abstract class BaseGui implements InventoryHolder {
 
     // ---- Header switchers ("members menu" style, see SwitcherLore) ----
 
-    protected static final String PERIOD_SWITCH_NAME = "&6Период";
-    protected static final String CATEGORY_SWITCH_NAME = "&6Категория";
-    protected static final String MODE_SWITCH_NAME = "&6Режим";
+    /** Cycler name in the "Имя | Состояние" form; the state is the current value without its legacy colour. */
+    protected static String switcherName(String label, String state) {
+        return "<gold>" + label + " <dark_gray>| <yellow>" + SwitcherLore.strip(state);
+    }
+
+    protected static String periodSwitchName(TimePeriod current) {
+        return switcherName("Период", current.getDisplayName());
+    }
+
+    protected String categorySwitchName(LoveLeaderboards plugin, String currentCategory) {
+        String state = currentCategory == null ? "" : plugin.getCategoryManager().getCategory(currentCategory)
+            .map(Category::displayName)
+            .orElse(currentCategory);
+        return switcherName("Категория", state);
+    }
+
+    protected static String modeSwitchName(List<String> options, int current) {
+        String state = current >= 0 && current < options.size() ? options.get(current) : "";
+        return switcherName("Режим", state);
+    }
 
     /** Lore for the period switcher: every period, current one marked. */
     protected List<String> periodSwitchLore(TimePeriod current) {
@@ -148,5 +165,10 @@ public abstract class BaseGui implements InventoryHolder {
     /** Lore for a two-option mode switcher (both clicks toggle). */
     protected List<String> modeSwitchLore(List<String> options, int current) {
         return SwitcherLore.build(options, current);
+    }
+
+    /** Lore for a mode switcher that cannot toggle right now (for example, no clan): blocked click block. */
+    protected List<String> modeSwitchLoreBlocked(List<String> options, int current, String reason, String action) {
+        return SwitcherLore.buildBlocked(options, current, reason, action);
     }
 }
