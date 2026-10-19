@@ -415,11 +415,13 @@ public class LeaderboardMainGui extends BaseGui {
         );
     }
 
-    /** Page indicator followed by the click block; used for the previous and next page buttons. */
+    /**
+     * Page indicator only; used for the previous and next page buttons. The click line was removed on
+     * 2026-10-19: navigation buttons carry no click block by the GUI lore standard (section 14).
+     */
     private static List<String> pageLore(int page, int maxPages) {
         List<String> lore = new ArrayList<>();
         lore.add("<dark_gray>Страница <white>" + page + " <dark_gray>из <white>" + maxPages);
-        lore.addAll(LoreStyle.clicks(LoreStyle.click(LoreStyle.Button.LEFT, "перейти")));
         return lore;
     }
 
