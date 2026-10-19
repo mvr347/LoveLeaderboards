@@ -59,29 +59,45 @@ public class ItemBuilder {
 
     public ItemBuilder name(String name) {
         if (meta != null && name != null) {
-            meta.displayName(dev.lovelace.loveleaderboards.utils.TextUtil.parse(name));
+            meta.displayName(upright(dev.lovelace.loveleaderboards.utils.TextUtil.parse(name)));
         }
         return this;
     }
 
+    /** Replaces the whole lore: each call sets the list, it does not append to it. */
     public ItemBuilder lore(String... lore) {
         if (meta != null && lore != null) {
             List<net.kyori.adventure.text.Component> formatted = Arrays.stream(lore)
                 .map(dev.lovelace.loveleaderboards.utils.TextUtil::parse)
+                .map(ItemBuilder::upright)
                 .toList();
             meta.lore(formatted);
         }
         return this;
     }
 
+    /** Replaces the whole lore: each call sets the list, it does not append to it. */
     public ItemBuilder lore(List<String> lore) {
         if (meta != null && lore != null) {
             List<net.kyori.adventure.text.Component> formatted = lore.stream()
                 .map(dev.lovelace.loveleaderboards.utils.TextUtil::parse)
+                .map(ItemBuilder::upright)
                 .toList();
             meta.lore(formatted);
         }
         return this;
+    }
+
+    /**
+     * Clients draw item names and lore in italics unless told otherwise. The italic is
+     * switched off only when the text does not set it itself, so an explicit italic survives.
+     */
+    private static net.kyori.adventure.text.Component upright(net.kyori.adventure.text.Component component) {
+        if (component.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC)
+                == net.kyori.adventure.text.format.TextDecoration.State.NOT_SET) {
+            return component.decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
+        }
+        return component;
     }
 
     public ItemBuilder skullOwner(UUID uuid) {
