@@ -86,7 +86,7 @@ public class PlayerComparisonGui extends BaseGui {
             inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
                 .skullOwner(viewer.getUniqueId())
                 .name("&e" + viewer.getName())
-                .lore("", "&7Ваш профиль", "&8&m─────────────────────", "&a⭐ Это вы!")
+                .lore("", "&7Ваш профиль", "<green>✓ <gray>Это вы")
                 .build());
         }
 

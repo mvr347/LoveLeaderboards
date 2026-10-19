@@ -71,25 +71,29 @@ public class PlayerStatsGui extends BaseGui {
         boolean isClanMode = "clan".equalsIgnoreCase(entityTypeFilter);
 
         if (isClanMode && hasClan) {
+            // Nothing is clickable on the clan header, so it has no separator.
             inventory.setItem(0, new ItemBuilder(Material.RED_BANNER)
                     .name("&eКлан: &a" + clanName)
                     .lore(
                             "",
                             "&7Статистика клана по категориям",
                             "&7Клан: &a" + clanName,
-                            "&8&m─────────────────────",
-                            "&a⭐ Это ваш клан!")
+                            "<green>✓ <gray>Это ваш клан")
                     .build());
         } else {
+            List<String> headLore = new ArrayList<>(List.of(
+                    "",
+                    "&7Профиль: &f" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"),
+                    isSelf ? "&7Личная статистика по категориям" : "&7Статистика оппонента"));
+            if (isSelf) {
+                headLore.add("<green>✓ <gray>Это вы");
+            } else {
+                headLore.addAll(LoreStyle.clicks(LoreStyle.click(LoreStyle.Button.LEFT, "сравнить со мной")));
+            }
             inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
                     .skullOwner(targetPlayer.getUniqueId())
                     .name("&e" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"))
-                    .lore(
-                            "",
-                            "&7Профиль: &f" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"),
-                            isSelf ? "&7Личная статистика по категориям" : "&7Статистика оппонента",
-                            "&8&m─────────────────────",
-                            isSelf ? "&a⭐ Это вы!" : "&aЛКМ &8— &7сравнить со мной")
+                    .lore(headLore)
                     .build());
         }
 
