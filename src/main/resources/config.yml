@@ -6,10 +6,12 @@ plugin:
 
 # ====== КАТЕГОРИИ ЛИДЕРБОРДОВ ======
 # Каждая категория может быть отслеживаема за всё время и/или месяц
+# 2026-10-19: иконки убраны из названий категорий и наград. Стандарт оформления GUI не допускает эмодзи
+# в названиях и лоре, а название категории выводится в меню и в подписи стенда Зала Славы.
 
 categories:
   kills:
-    display-name: '&6⚔️  Убийства'
+    display-name: '&6Убийства'
     description: 'Количество убийств игроков'
     enabled: true
     sort-order: 1
@@ -17,7 +19,7 @@ categories:
     head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzdhZWU5YTc1YmYwZGY3ODk3MTgzMDE1Y2NhMGIyZDdiNzliYjNjMzRlYTU0MjRjNjc5NGJiNGZhOTVjMTZiZiJ9fX0="
     
   bounty-completed:
-    display-name: '&6💰 Бонусы'
+    display-name: '&6Бонусы'
     description: 'Выполненные бонуса от LoveHunt'
     enabled: true
     sort-order: 2
@@ -26,7 +28,7 @@ categories:
     head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNzE1NDQxOWVlMzc4NDg4NDllNDBmYzNmZTdkZGI3ODI0NGE3MzY4NDlhN2E0MWU4ZTYxOTdmYjhiOTFmNDNlIn19fQ=="
 
   contracts-completed:
-    display-name: '&6📜 Контракты'
+    display-name: '&6Контракты'
     description: 'Выполненные контракты от LoveContracts'
     enabled: true
     sort-order: 3
@@ -35,7 +37,7 @@ categories:
     head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDQ4MWRmZTJiMmY5OWUzZGVjZTRjMzQ3MjY0MzM1ZjUzMTgzZjEzYjE4YTkxN2RkYjcyMzEzZTlkMDc0NjNmZCJ9fX0="
 
   clan-power:
-    display-name: '&6👑 Мощь Клана'
+    display-name: '&6Мощь Клана'
     description: 'Общая мощь клана'
     enabled: true
     sort-order: 4
@@ -44,7 +46,7 @@ categories:
     head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjJiNWY5NjhjYzg4ZDNlOTg2NWQ2ZTdhOGQ1YmU3NWVhNzNhMGEzOTRiNTFlYWE1Zjk0YzA0NzU5ZGNkYTAyZCJ9fX0="
 
   hunter-rating:
-    display-name: '&6🎯 Рейтинг охотника'
+    display-name: '&6Рейтинг охотника'
     description: 'Репутация охотника за головами'
     enabled: true
     sort-order: 5
@@ -53,7 +55,7 @@ categories:
     head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZjU3YzdlOTZhODAyYzI3MDgwYzdmODA1MzgxNDM2OGVhOTRkZjg2NDQ1OTEyMGU1MTU1NzE4YjUwM3MzZWQ3In19fQ=="
 
   best-brewer:
-    display-name: '&6🍺 Мастер пивоварения'
+    display-name: '&6Мастер пивоварения'
     description: 'Уровень навыка пивовара'
     enabled: true
     sort-order: 6
@@ -62,7 +64,7 @@ categories:
     head-b64: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGZjZWUzYTg4YmI1NGMwZjZlZTY2YjQ0YWM3NGZmOTdjZDkyYTA4ZjE0Y2NjMTdhMjYyMzcxZjBhYTg5MjEifX19"
 
   clan-wealth:
-    display-name: '&6💰 Богатейший клан'
+    display-name: '&6Богатейший клан'
     description: 'Содержимое клановой казны'
     enabled: true
     sort-order: 7
@@ -112,26 +114,26 @@ rewards:
   categories:
     kills:
       rank-1:
-        display-name: '&6🥇 Первое место по убийствам'
+        display-name: '&6Первое место по убийствам'
         commands:
           - 'give %player% diamond 64'
           - 'broadcast &6%player% &fпобедил в топе убийств!'
       rank-2-3:
-        display-name: '&e🥈 Второе-третье место'
+        display-name: '&eВторое-третье место'
         commands:
           - 'give %player% emerald 32'
       rank-4-10:
-        display-name: '&7🥉 Топ 10'
+        display-name: '&7Топ 10'
         commands:
           - 'give %player% gold_ingot 16'
       rank-11-50:
-        display-name: '&7📊 Топ 50'
+        display-name: '&7Топ 50'
         commands:
           - 'give %player% gold_nugget 8'
     
     bounty-completed:
       rank-1:
-        display-name: '&6🏆 Король Охотников'
+        display-name: '&6Король Охотников'
         commands:
           - 'give %player% diamond 48'
           - 'title %player% times 10 70 20'
@@ -141,7 +143,7 @@ rewards:
     
     clan-power:
       rank-1:
-        display-name: '&6👑 Мощнейший клан'
+        display-name: '&6Мощнейший клан'
         commands:
           - 'broadcast &6Клан %clan% стал мощнейшим! Мощь: %score%'
 
@@ -174,6 +176,9 @@ gui:
     title: '&6Выбор категории'
 
   # Настройки слота 0 (Профиль игрока / Клана)
+  # 2026-10-19: иконка ⭐ убрана по стандарту оформления GUI; клик идёт отдельной строкой после разделителя,
+  # ЛКМ зелёным. Серверы с уже созданным config.yml сохраняют старый текст (defaults не перезаписываются),
+  # этот блок при обновлении нужно поправить вручную.
   slot-0:
     player:
       head-b64: ""  # Оставьте пустым для отображения собственного скина игрока, или вставьте Base64
@@ -184,15 +189,20 @@ gui:
         - ""
         - "&7Ваше место: &e#%rank%"
         - "&7%unit%: &a%score%"
-        - "&8&m─────────────────────"
-        - "&a⭐ Это вы!"
-        - "&aЛКМ &8— &7посмотреть статистику"
+        - ""
+        - "<green>✓ <gray>Это вы"
+        - "<dark_gray><st>─────────────────────</st>"
+        - "<green>ЛКМ <dark_gray>— <gray>посмотреть статистику"
   # Настройки свободных мест в лидерборде
+  # 2026-10-19: место без игрока описано как пустое состояние: подзаголовок и «Что делать» вместо строки «Статус».
   empty-slot:
-    name: "&7#%rank% &8Свободное место"
+    name: "<gray>Свободное место <dark_gray>| <white>#%rank%"
     lore:
-      - "&7Позиция: &f#%rank%"
-      - "&7Статус: &8Пусто"
+      - "<dark_gray>Пусто"
+      - ""
+      - "<dark_gray>▪ <gray>Что делать:"
+      - "  <gray>Наберите очки в этой категории,"
+      - "  <gray>чтобы занять это место в топе."
 
 # Все Base64 текстуры голов (для кнопок, категорий и спец-слотов)
 # перенесены и структурированы в отдельном файле: heads.yml
@@ -230,8 +240,10 @@ hall-of-fame:
       - "&fПериод: &6%time_period%"
       - "&fЛидер #%position%: &b%player_name%"
       - "&fОчки: &e%score%"
-      - "&7(Shift + ПКМ — сменить период)"
-      - "&7(ПКМ — открыть меню)"
+      # 2026-10-19: подсказки оформлены как строки кликов меню (Shift жёлтым, ПКМ золотым, тире тёмно-серым).
+      # Голограмма выводит текст через legacy-коды (TextUtil.colorize), поэтому здесь остаются & и MiniMessage не нужен.
+      - "&eShift &8+ &6ПКМ &8— &7сменить период"
+      - "&6ПКМ &8— &7открыть меню"
 
   periods:
     alltime: "За всё время"

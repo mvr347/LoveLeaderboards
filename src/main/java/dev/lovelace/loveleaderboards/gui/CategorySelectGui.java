@@ -59,10 +59,12 @@ public class CategorySelectGui extends BaseGui {
 
         boolean isClanView = "clan".equalsIgnoreCase(entityTypeFilter);
         String typeB64 = getButtonHead(plugin, isClanView ? "type-clan" : "type-player");
+        List<String> modeOptions = List.of("Игроки", "Кланы");
+        int modeIndex = isClanView ? 1 : 0;
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
             .base64Head(typeB64)
-            .name(MODE_SWITCH_NAME)
-            .lore(modeSwitchLore(List.of("Игроки", "Кланы"), isClanView ? 1 : 0))
+            .name(modeSwitchName(modeOptions, modeIndex))
+            .lore(modeSwitchLore(modeOptions, modeIndex))
             .build());
 
         if (compareTarget != null) {

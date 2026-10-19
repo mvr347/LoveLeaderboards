@@ -71,25 +71,29 @@ public class PlayerStatsGui extends BaseGui {
         boolean isClanMode = "clan".equalsIgnoreCase(entityTypeFilter);
 
         if (isClanMode && hasClan) {
+            // Nothing is clickable on the clan header, so it has no separator.
             inventory.setItem(0, new ItemBuilder(Material.RED_BANNER)
                     .name("&eКлан: &a" + clanName)
                     .lore(
                             "",
                             "&7Статистика клана по категориям",
                             "&7Клан: &a" + clanName,
-                            "&8&m─────────────────────",
-                            "&a⭐ Это ваш клан!")
+                            "<green>✓ <gray>Это ваш клан")
                     .build());
         } else {
+            List<String> headLore = new ArrayList<>(List.of(
+                    "",
+                    "&7Профиль: &f" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"),
+                    isSelf ? "&7Личная статистика по категориям" : "&7Статистика оппонента"));
+            if (isSelf) {
+                headLore.add("<green>✓ <gray>Это вы");
+            } else {
+                headLore.addAll(LoreStyle.clicks(LoreStyle.click(LoreStyle.Button.LEFT, "сравнить со мной")));
+            }
             inventory.setItem(0, new ItemBuilder(Material.PLAYER_HEAD)
                     .skullOwner(targetPlayer.getUniqueId())
                     .name("&e" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"))
-                    .lore(
-                            "",
-                            "&7Профиль: &f" + (targetPlayer.getName() != null ? targetPlayer.getName() : "Игрок"),
-                            isSelf ? "&7Личная статистика по категориям" : "&7Статистика оппонента",
-                            "&8&m─────────────────────",
-                            isSelf ? "&a⭐ Это вы!" : "&aЛКМ &8— &7сравнить со мной")
+                    .lore(headLore)
                     .build());
         }
 
@@ -99,22 +103,22 @@ public class PlayerStatsGui extends BaseGui {
         }
 
         // Slot 3: Mode switcher ("Я" / "Мой клан"). Without a clan it only shows the current mode.
-        List<String> modeLore = modeSwitchLore(List.of("Я", "Мой клан"), isClanMode ? 1 : 0);
-        if (!hasClan) {
-            modeLore = new ArrayList<>(modeLore.subList(0, 2));
-            modeLore.add("&8&m─────────────────────");
-            modeLore.add("&cВступление в клан разблокирует режим клана");
-        }
+        List<String> modeOptions = List.of("Я", "Мой клан");
+        int modeIndex = isClanMode ? 1 : 0;
+        List<String> modeLore = hasClan
+                ? modeSwitchLore(modeOptions, modeIndex)
+                : modeSwitchLoreBlocked(modeOptions, modeIndex,
+                        isSelf ? "Вы не состоите в клане" : "У игрока нет клана", "переключить режим");
         inventory.setItem(3, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(getButtonHead(plugin, isClanMode ? "type-clan" : "type-player"))
-                .name(MODE_SWITCH_NAME)
+                .name(modeSwitchName(modeOptions, modeIndex))
                 .lore(modeLore)
                 .build());
 
         // Slot 5: Period switcher
         inventory.setItem(5, new ItemBuilder(Material.PLAYER_HEAD)
                 .base64Head(getButtonHead(plugin, "period"))
-                .name(PERIOD_SWITCH_NAME)
+                .name(periodSwitchName(currentPeriod))
                 .lore(periodSwitchLore(currentPeriod))
                 .build());
 
