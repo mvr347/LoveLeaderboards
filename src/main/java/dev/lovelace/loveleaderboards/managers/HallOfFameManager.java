@@ -297,8 +297,8 @@ public class HallOfFameManager {
                     "&fПериод: &6%time_period%",
                     "&fЛидер #%position%: &b%player_name%",
                     "&fОчки: &e%score%",
-                    "&7(Shift + ПКМ — сменить период)",
-                    "&7(ПКМ — открыть меню)"
+                    "&eShift &8+ &6ПКМ &8— &7сменить период",
+                    "&6ПКМ &8— &7открыть меню"
             );
         }
 
@@ -309,8 +309,9 @@ public class HallOfFameManager {
                     line = "&e&lЛучший " + periodDisplayName.toLowerCase();
                 }
             }
-            if (stand.getType().equals("alltime") && line.contains("Shift + ПКМ")) {
-                continue; // Skip the shift tip for alltime
+            // The Shift click hint is the only template line that mentions Shift; skip it for alltime.
+            if (stand.getType().equals("alltime") && line.contains("Shift")) {
+                continue;
             }
             String formatted = line
                     .replace("%category_name%", categoryDisplayName)
