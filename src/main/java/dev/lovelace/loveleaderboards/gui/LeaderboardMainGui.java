@@ -196,16 +196,15 @@ public class LeaderboardMainGui extends BaseGui {
                             "&7Место вашего клана: &e#%rank%",
                             "&7%unit%: &a%score%",
                             "",
-                            "&a⭐ Это ваш клан!"
+                            "<green>✓ <gray>Это ваш клан"
                         );
                     }
                     String rankStr = slot0Stats.map(s -> s.rank() > 0 ? String.valueOf(s.rank()) : "Не в топе").orElse("Не в топе");
                     String scoreStr = slot0Stats.map(s -> String.valueOf((long)s.score())).orElse("0");
 
-                    ItemBuilder builder = new ItemBuilder(Material.RED_BANNER)
-                        .name(nameTemplate.replace("%clan_name%", clanName));
+                    List<String> lore = new ArrayList<>();
                     for (String line : loreTemplate) {
-                        builder.lore(line
+                        lore.add(line
                             .replace("%category_name%", cat.displayName())
                             .replace("%time_period%", currentPeriod.getDisplayName())
                             .replace("%rank%", rankStr)
@@ -214,33 +213,38 @@ public class LeaderboardMainGui extends BaseGui {
                             .replace("%clan_name%", clanName)
                         );
                     }
-                    slot0Item = builder.build();
+                    slot0Item = new ItemBuilder(Material.RED_BANNER)
+                        .name(nameTemplate.replace("%clan_name%", clanName))
+                        .lore(lore)
+                        .build();
                 } else {
                     String noClanB64 = getButtonHead(plugin, "no-clan");
-                    String nameTemplate = plugin.getConfig().getString("gui.slot-0.no-clan.name", "&cУ вас ещё нет клана");
+                    String nameTemplate = plugin.getConfig().getString("gui.slot-0.no-clan.name", "<gray>Ваш клан <dark_gray>| <red>Недоступно");
                     List<String> loreTemplate = plugin.getConfig().getStringList("gui.slot-0.no-clan.lore");
                     if (loreTemplate.isEmpty()) {
-                        loreTemplate = List.of(
+                        loreTemplate = new ArrayList<>(List.of(
                             "",
                             "&7Категория: &f%category_name%",
                             "&7Период: %time_period%",
                             "",
-                            "&7Статус: &cВы не состоите в клане",
-                            "",
-                            "&cВступите или создайте клан для участия"
-                        );
+                            "<dark_gray>▪ <gray>Что делать:",
+                            "  <gray>Вступите или создайте клан, чтобы участвовать"
+                        ));
+                        loreTemplate.addAll(LoreStyle.blocked("Вы не состоите в клане", LoreStyle.Button.LEFT, "открыть статистику клана"));
                     }
 
-                    ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
-                        .base64Head(noClanB64)
-                        .name(nameTemplate);
+                    List<String> lore = new ArrayList<>();
                     for (String line : loreTemplate) {
-                        builder.lore(line
+                        lore.add(line
                             .replace("%category_name%", cat.displayName())
                             .replace("%time_period%", currentPeriod.getDisplayName())
                         );
                     }
-                    slot0Item = builder.build();
+                    slot0Item = new ItemBuilder(Material.PLAYER_HEAD)
+                        .base64Head(noClanB64)
+                        .name(nameTemplate)
+                        .lore(lore)
+                        .build();
                 }
             } else {
                 String nameTemplate = plugin.getConfig().getString("gui.slot-0.player.name", "&e%player_name%");
@@ -254,18 +258,17 @@ public class LeaderboardMainGui extends BaseGui {
                         "&7Ваше место: &e#%rank%",
                         "&7%unit%: &a%score%",
                         "",
-                        "&a⭐ Это вы!",
-                        "&a▶ Нажмите, чтобы открыть статистику"
+                        "<green>✓ <gray>Это вы",
+                        LoreStyle.SEPARATOR,
+                        LoreStyle.click(LoreStyle.Button.LEFT, "посмотреть статистику")
                     );
                 }
                 String rankStr = slot0Stats.map(s -> s.rank() > 0 ? String.valueOf(s.rank()) : "Не в топе").orElse("Не в топе");
                 String scoreStr = slot0Stats.map(s -> String.valueOf((long)s.score())).orElse("0");
 
-                ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
-                    .skullOwner(viewer.getUniqueId())
-                    .name(nameTemplate.replace("%player_name%", viewer.getName()));
+                List<String> lore = new ArrayList<>();
                 for (String line : loreTemplate) {
-                    builder.lore(line
+                    lore.add(line
                         .replace("%category_name%", cat.displayName())
                         .replace("%time_period%", currentPeriod.getDisplayName())
                         .replace("%rank%", rankStr)
@@ -274,7 +277,11 @@ public class LeaderboardMainGui extends BaseGui {
                         .replace("%player_name%", viewer.getName())
                     );
                 }
-                slot0Item = builder.build();
+                slot0Item = new ItemBuilder(Material.PLAYER_HEAD)
+                    .skullOwner(viewer.getUniqueId())
+                    .name(nameTemplate.replace("%player_name%", viewer.getName()))
+                    .lore(lore)
+                    .build();
             }
 
             // 4. Pre-build Grid Items ASYNCHRONOUSLY
@@ -286,80 +293,66 @@ public class LeaderboardMainGui extends BaseGui {
                 ItemBuilder itemBuilder;
                 if (entry.entityId().equals("empty")) {
                     String emptyB64 = getButtonHead(plugin, "empty-slot");
-                    String nameTemplate = plugin.getConfig().getString("gui.empty-slot.name", "&7#%rank% &8Свободное место");
+                    String nameTemplate = plugin.getConfig().getString("gui.empty-slot.name", "<gray>Свободное место <dark_gray>| <white>#%rank%");
                     List<String> loreTemplate = plugin.getConfig().getStringList("gui.empty-slot.lore");
                     if (loreTemplate.isEmpty()) {
-                        loreTemplate = List.of("", "&7Позиция: &f#%rank%", "&7Статус: &8Пусто");
+                        loreTemplate = List.of(
+                            "<dark_gray>Пусто",
+                            "",
+                            "<dark_gray>▪ <gray>Что делать:",
+                            "  <gray>Наберите очки в этой категории,",
+                            "  <gray>чтобы занять это место в топе."
+                        );
                     }
 
-                    ItemBuilder builder = new ItemBuilder(Material.PLAYER_HEAD)
-                        .base64Head(emptyB64)
-                        .name(nameTemplate.replace("%rank%", String.valueOf(entry.rank())));
+                    List<String> lore = new ArrayList<>();
                     for (String line : loreTemplate) {
-                        builder.lore(line.replace("%rank%", String.valueOf(entry.rank())));
+                        lore.add(line.replace("%rank%", String.valueOf(entry.rank())));
                     }
-                    itemBuilder = builder;
+                    itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
+                        .base64Head(emptyB64)
+                        .name(nameTemplate.replace("%rank%", String.valueOf(entry.rank())))
+                        .lore(lore);
                 } else if (isClanView) {
                     boolean isSelfClan = hasClan && entry.entityName().equalsIgnoreCase(clanName);
+                    List<String> lore = new ArrayList<>();
+                    lore.add(isSelfClan ? "<dark_gray>Ваш клан" : "<dark_gray>Клан");
+                    lore.add("");
+                    lore.addAll(standingLore(entry, scoreUnit));
                     if (isSelfClan) {
+                        lore.addAll(LoreStyle.blocked("Нельзя сравнить свой клан с самим собой", LoreStyle.Button.LEFT, "сравнить"));
                         itemBuilder = new ItemBuilder(Material.RED_BANNER)
-                            .name(color + "#" + entry.rank() + " &f" + entry.entityName() + " &a(Ваш клан)")
-                            .lore(
-                                "",
-                                "&7Позиция клана: &f#" + entry.rank(),
-                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                                "",
-                                "&a⭐ Это ваш клан!",
-                                "&7(Сравнить свой клан с собой нельзя)"
-                            );
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName() + " &a(Ваш клан)");
                     } else if (hasClan) {
+                        lore.addAll(LoreStyle.clicks(LoreStyle.click(LoreStyle.Button.LEFT, "сравнить с вашим кланом")));
                         itemBuilder = new ItemBuilder(Material.RED_BANNER)
-                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
-                            .lore(
-                                "",
-                                "&7Позиция клана: &f#" + entry.rank(),
-                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                                "",
-                                "&a▶ Нажмите для сравнения с вашим кланом"
-                            );
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName());
                     } else {
-                        // Viewer has NO clan -> NO compare option in lore!
+                        // Viewer has NO clan: the click only shows the no-clan message, so it is blocked.
+                        lore.addAll(LoreStyle.blocked("У вас ещё нет клана", LoreStyle.Button.LEFT, "сравнить"));
                         itemBuilder = new ItemBuilder(Material.RED_BANNER)
-                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
-                            .lore(
-                                "",
-                                "&7Позиция клана: &f#" + entry.rank(),
-                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                                "",
-                                "&c(У вас ещё нет клана)"
-                            );
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName());
                     }
+                    itemBuilder.lore(lore);
                 } else {
                     boolean isSelfPlayer = entry.entityId().equalsIgnoreCase(viewer.getUniqueId().toString())
                         || entry.entityName().equalsIgnoreCase(viewer.getName());
+                    List<String> lore = new ArrayList<>();
+                    lore.add(isSelfPlayer ? "<dark_gray>Это вы" : "<dark_gray>Игрок");
+                    lore.add("");
+                    lore.addAll(standingLore(entry, scoreUnit));
                     if (isSelfPlayer) {
+                        lore.addAll(LoreStyle.clicks(LoreStyle.click(LoreStyle.Button.LEFT, "посмотреть свою статистику")));
                         itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                            .name(color + "#" + entry.rank() + " &f" + entry.entityName() + " &a(Вы)")
-                            .lore(
-                                "",
-                                "&7Позиция: &f#" + entry.rank(),
-                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                                "&8&m─────────────────────",
-                                "&a⭐ Это вы!",
-                                "&aЛКМ &8— &7посмотреть свою статистику"
-                            );
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName() + " &a(Вы)");
                     } else {
+                        lore.addAll(LoreStyle.clicks(
+                            LoreStyle.click(LoreStyle.Button.LEFT, "статистика игрока"),
+                            LoreStyle.click(LoreStyle.Button.RIGHT, "сравнить со мной")));
                         itemBuilder = new ItemBuilder(Material.PLAYER_HEAD)
-                            .name(color + "#" + entry.rank() + " &f" + entry.entityName())
-                            .lore(
-                                "",
-                                "&7Позиция: &f#" + entry.rank(),
-                                "&7" + scoreUnit + ": &a" + (long) entry.score(),
-                                "&8&m─────────────────────",
-                                "&aЛКМ &8— &7статистика игрока",
-                                "&6ПКМ &8— &7сравнить со мной"
-                            );
+                            .name(color + "#" + entry.rank() + " &f" + entry.entityName());
                     }
+                    itemBuilder.lore(lore);
                     try {
                         UUID uuid = UUID.fromString(entry.entityId());
                         itemBuilder.playerProfile(uuid, entry.entityName());
@@ -377,7 +370,7 @@ public class LeaderboardMainGui extends BaseGui {
                 prevItem = new ItemBuilder(Material.PLAYER_HEAD)
                     .base64Head(prevB64)
                     .name("&eПредыдущая страница")
-                    .lore("&8&m─────────────────────", "&7Страница " + (finalActualPage - 1) + " из " + finalMaxPages, "&aЛКМ &8— &7перейти")
+                    .lore(pageLore(finalActualPage - 1, finalMaxPages))
                     .build();
             }
 
@@ -387,7 +380,7 @@ public class LeaderboardMainGui extends BaseGui {
                 nextItem = new ItemBuilder(Material.PLAYER_HEAD)
                     .base64Head(nextB64)
                     .name("&eСледующая страница")
-                    .lore("&8&m─────────────────────", "&7Страница " + (finalActualPage + 1) + " из " + finalMaxPages, "&aЛКМ &8— &7перейти")
+                    .lore(pageLore(finalActualPage + 1, finalMaxPages))
                     .build();
             }
 
@@ -410,6 +403,24 @@ public class LeaderboardMainGui extends BaseGui {
                 inventory.setItem(44, finalNextItem);
             });
         });
+    }
+
+    /** Position and score sections shared by the row entries. */
+    private static List<String> standingLore(LeaderboardEntry entry, String scoreUnit) {
+        return List.of(
+            "<dark_gray>▪ <gray>Позиция:",
+            "  <gray>Место: <white>#" + entry.rank(),
+            "<dark_gray>▪ <gray>Очки:",
+            "  <gray>" + scoreUnit + ": <white>" + (long) entry.score()
+        );
+    }
+
+    /** Page indicator followed by the click block; used for the previous and next page buttons. */
+    private static List<String> pageLore(int page, int maxPages) {
+        List<String> lore = new ArrayList<>();
+        lore.add("<dark_gray>Страница <white>" + page + " <dark_gray>из <white>" + maxPages);
+        lore.addAll(LoreStyle.clicks(LoreStyle.click(LoreStyle.Button.LEFT, "перейти")));
+        return lore;
     }
 
     @Override
