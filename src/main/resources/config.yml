@@ -100,6 +100,10 @@ monthly-reset:
 
 rewards:
   enabled: true
+  # 2026-10-19: победителю не в сети команды give/title отвечают «No player was found», а месяц уже отмечен
+  # выплаченным, так что награда терялась. Теперь она хранится и выдаётся при входе игрока; 60 дней хватает
+  # на длинный отпуск и не копит записи тех, кто ушёл насовсем.
+  pending-keep-days: 60
   run-at:
     day-of-month: 1
     hour: 0
@@ -131,7 +135,9 @@ rewards:
         commands:
           - 'give %player% diamond 48'
           - 'title %player% times 10 70 20'
-          - 'title %player% title &6&lМастер Охоты'
+          # 2026-10-19: с 1.21.5 /title принимает только JSON-компонент, '&'-коды дают ошибку синтаксиса
+          # и обрывали выдачу остальных команд.
+          - 'title %player% title {"text":"Мастер Охоты","color":"gold","bold":true}'
     
     clan-power:
       rank-1:
