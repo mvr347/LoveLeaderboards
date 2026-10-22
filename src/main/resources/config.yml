@@ -78,6 +78,12 @@ integrations:
   placeholder-api:
     enabled: true
     cache-time: 30  # секунды
+  # 2026-10-22: NPC стендов создаются через контракт NpcProvider из LoveCore, а не прямыми вызовами Citizens.
+  # citizens — NPC Citizens (нужен установленный Citizens, он подключается через LoveCore); значение по умолчанию,
+  # потому что на текущем сервере стенды уже стоят на Citizens и поведение не должно меняться без решения админа.
+  # loveessential — собственные NPC LoveEssential. Смена значения НЕ переносит уже созданные NPC: стенд помнит
+  # провайдера, который его создал, и пока выбран другой, его NPC не обновляется (пересоздайте стенд).
+  npc-provider: citizens
   vesuvio:
     enabled: true
     hide-suspects: true

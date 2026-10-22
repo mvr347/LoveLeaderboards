@@ -11,10 +11,11 @@ public class LeaderboardStand {
     private final int position;
     private final String type;
     private String currentPeriod;
-    private int npcId;
+    private String npcKey;
+    private String npcProvider;
     private UUID hologramEntityUuid;
 
-    public LeaderboardStand(String id, Location location, String category, int position, String type, String currentPeriod, int npcId, UUID hologramEntityUuid) {
+    public LeaderboardStand(String id, Location location, String category, int position, String type, String currentPeriod, String npcKey, String npcProvider, UUID hologramEntityUuid) {
         this.id = id;
         this.location = location;
         this.category = category;
@@ -27,7 +28,8 @@ public class LeaderboardStand {
             this.currentPeriod = currentPeriod;
         }
         
-        this.npcId = npcId;
+        this.npcKey = npcKey;
+        this.npcProvider = npcKey == null ? null : npcProvider;
         this.hologramEntityUuid = hologramEntityUuid;
     }
 
@@ -59,12 +61,23 @@ public class LeaderboardStand {
         this.currentPeriod = currentPeriod;
     }
 
-    public int getNpcId() {
-        return npcId;
+    /** NPC key in the provider's own format (Citizens: numeric id as text), or null if the stand has no NPC. */
+    public String getNpcKey() {
+        return npcKey;
     }
 
-    public void setNpcId(int npcId) {
-        this.npcId = npcId;
+    /** Id of the provider that owns {@link #getNpcKey()}; null if the stand has no NPC. */
+    public String getNpcProvider() {
+        return npcProvider;
+    }
+
+    public boolean hasNpc() {
+        return npcKey != null;
+    }
+
+    public void setNpc(String npcKey, String npcProvider) {
+        this.npcKey = npcKey;
+        this.npcProvider = npcKey == null ? null : npcProvider;
     }
 
     public UUID getHologramEntityUuid() {

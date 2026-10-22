@@ -195,7 +195,7 @@ public class LoveLeaderboardsAdminCommand implements TabExecutor {
                 sender.sendMessage("§f• Категория: §a" + s.getCategory());
                 sender.sendMessage("§f• Позиция (место): §e#" + s.getPosition());
                 sender.sendMessage("§f• Текущий период: §b" + s.getCurrentPeriod());
-                sender.sendMessage("§f• Citizens NPC ID: §e" + (s.getNpcId() != -1 ? s.getNpcId() : "Отсутствует"));
+                sender.sendMessage("§f• NPC: §e" + (s.hasNpc() ? s.getNpcProvider() + ":" + s.getNpcKey() : "Отсутствует"));
                 sender.sendMessage("§f• Локация: §7" + loc.getWorld().getName() + " (" + loc.getBlockX() + ", " + loc.getBlockY() + ", " + loc.getBlockZ() + ")");
             }
             case "reload" -> {
