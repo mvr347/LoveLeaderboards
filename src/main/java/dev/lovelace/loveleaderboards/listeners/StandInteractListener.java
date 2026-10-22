@@ -6,7 +6,6 @@ import dev.lovelace.loveleaderboards.models.LeaderboardStand;
 import dev.lovelace.loveleaderboards.models.TimePeriod;
 import dev.lovelace.loveleaderboards.utils.Notify;
 import dev.lovelace.loveleaderboards.utils.TextUtil;
-import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,16 +20,6 @@ public class StandInteractListener implements Listener {
         this.plugin = plugin;
     }
 
-    public static void registerCitizensListener(LoveLeaderboards plugin) {
-        if (Bukkit.getPluginManager().isPluginEnabled("Citizens")) {
-            try {
-                Bukkit.getPluginManager().registerEvents(new CitizensListener(plugin), plugin);
-            } catch (Throwable t) {
-                plugin.getLogger().warning("Citizens found, but failed to register Citizens listener: " + t.getMessage());
-            }
-        }
-    }
-
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Player player = event.getPlayer();
@@ -42,7 +31,7 @@ public class StandInteractListener implements Listener {
         }
     }
 
-    private static void handleStandInteract(LoveLeaderboards plugin, Player player, LeaderboardStand stand) {
+    static void handleStandInteract(LoveLeaderboards plugin, Player player, LeaderboardStand stand) {
         if (player.isSneaking()) {
             // Shift + Right-Click -> Cycle period
             plugin.getHallOfFameManager().togglePeriod(stand);
@@ -81,25 +70,6 @@ public class StandInteractListener implements Listener {
 
             TimePeriod period = TimePeriod.fromString(stand.getCurrentPeriod());
             player.openInventory(new LeaderboardMainGui(plugin, player, stand.getCategory(), period, 1).getInventory());
-        }
-    }
-
-    private static class CitizensListener implements Listener {
-        private final LoveLeaderboards plugin;
-
-        public CitizensListener(LoveLeaderboards plugin) {
-            this.plugin = plugin;
-        }
-
-        @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-        public void onCitizensNpcClick(net.citizensnpcs.api.event.NPCRightClickEvent event) {
-            Player player = event.getClicker();
-            LeaderboardStand stand = plugin.getHallOfFameManager().getStandByNpcId(event.getNPC().getId());
-
-            if (stand != null) {
-                event.setCancelled(true);
-                handleStandInteract(plugin, player, stand);
-            }
         }
     }
 }

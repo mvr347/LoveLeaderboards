@@ -1,10 +1,13 @@
 package dev.lovelace.loveleaderboards.managers;
 
 import dev.lovelace.loveleaderboards.LoveLeaderboards;
+import dev.lovelace.loveleaderboards.integrations.StandNpcs;
 import dev.lovelace.loveleaderboards.models.Category;
 import dev.lovelace.loveleaderboards.models.LeaderboardEntry;
 import dev.lovelace.loveleaderboards.models.LeaderboardStand;
+import dev.lovelace.loveleaderboards.utils.NpcKeys;
 import dev.lovelace.loveleaderboards.utils.TextUtil;
+import net.kyori.adventure.text.Component;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -26,11 +29,13 @@ public class HallOfFameManager {
     private final File standsFile;
     private YamlConfiguration standsConfig;
     private final Object fileLock = new Object();
+    private final StandNpcs standNpcs;
     private final Map<String, LeaderboardStand> stands = new ConcurrentHashMap<>();
     private org.bukkit.scheduler.BukkitTask refreshTask;
 
     public HallOfFameManager(LoveLeaderboards plugin) {
         this.plugin = plugin;
+        this.standNpcs = new StandNpcs(plugin);
         this.standsFile = new File(plugin.getDataFolder(), "stands.yml");
     }
 
@@ -40,6 +45,7 @@ public class HallOfFameManager {
             refreshTask = null;
         }
         stands.clear();
+        boolean migratedNpcKeys = false;
         if (!standsFile.exists()) {
             try {
                 standsFile.createNewFile();
@@ -55,7 +61,10 @@ public class HallOfFameManager {
                 String category = section.getString(key + ".category", "kills");
                 int position = section.getInt(key + ".position", 1);
                 String period = section.getString(key + ".period", "alltime");
-                int npcId = section.getInt(key + ".npc-id", -1);
+                NpcKeys.Stored npc = NpcKeys.read(section.getConfigurationSection(key));
+                if (npc.migrated()) {
+                    migratedNpcKeys = true;
+                }
                 String holoUuidStr = section.getString(key + ".hologram-uuid", null);
                 UUID holoUuid = null;
                 if (holoUuidStr != null) {
@@ -79,16 +88,51 @@ public class HallOfFameManager {
                         float pitch = (float) section.getDouble(key + ".pitch");
 
                         Location loc = new Location(world, x, y, z, yaw, pitch);
-                        LeaderboardStand stand = new LeaderboardStand(key, loc, category, position, type, period, npcId, holoUuid);
+                        LeaderboardStand stand = new LeaderboardStand(key, loc, category, position, type, period, npc.key(), npc.provider(), holoUuid);
                         stands.put(key, stand);
                     }
                 }
             }
         }
         plugin.getLogger().info("Loaded " + stands.size() + " Hall of Fame stands.");
+        if (migratedNpcKeys) {
+            migrateLegacyNpcIds();
+        }
         
         // Schedule periodic refresh of stands (holograms & skins)
         refreshTask = Bukkit.getScheduler().runTaskTimer(plugin, this::updateAllStands, 100L, 600L);
+    }
+
+    /**
+     * One-time rewrite of the legacy {@code npc-id: <int>} to {@code npc-key}/{@code npc-provider}. The old file is
+     * kept next to it as a backup so a downgrade does not lose the Citizens ids.
+     */
+    private void migrateLegacyNpcIds() {
+        File backup = new File(plugin.getDataFolder(), "stands.yml.pre-npc-key");
+        if (!backup.exists()) {
+            try {
+                java.nio.file.Files.copy(standsFile.toPath(), backup.toPath());
+            } catch (IOException e) {
+                plugin.getLogger().warning("Не удалось сделать резервную копию stands.yml: " + e.getMessage());
+            }
+        }
+        // Rewrite only the NPC fields of the loaded file instead of re-serialising the in-memory stands: stands in
+        // worlds that are not loaded yet are not in memory, and a full snapshot would drop them.
+        ConfigurationSection section = standsConfig.getConfigurationSection("stands");
+        if (section != null) {
+            for (String id : section.getKeys(false)) {
+                ConfigurationSection stand = section.getConfigurationSection(id);
+                if (stand == null || !NpcKeys.read(stand).migrated()) {
+                    continue;
+                }
+                NpcKeys.Stored npc = NpcKeys.read(stand);
+                stand.set("npc-key", npc.key());
+                stand.set("npc-provider", npc.provider());
+                stand.set("npc-id", null);
+            }
+        }
+        writeStandsFile(standsConfig.saveToString());
+        plugin.getLogger().info("stands.yml: числовые npc-id мигрированы в npc-key (провайдер citizens).");
     }
 
     /** Saves stands.yml: snapshot is serialized on the calling (main) thread, the disk write goes async. */
@@ -106,7 +150,8 @@ public class HallOfFameManager {
             snapshot.set(key + ".position", stand.getPosition());
             snapshot.set(key + ".type", stand.getType());
             snapshot.set(key + ".period", stand.getCurrentPeriod());
-            snapshot.set(key + ".npc-id", stand.getNpcId());
+            snapshot.set(key + ".npc-key", stand.getNpcKey());
+            snapshot.set(key + ".npc-provider", stand.getNpcProvider());
             snapshot.set(key + ".hologram-uuid", stand.getHologramEntityUuid() != null ? stand.getHologramEntityUuid().toString() : null);
 
             Location loc = stand.getLocation();
@@ -138,22 +183,17 @@ public class HallOfFameManager {
     public boolean createStand(String id, Location location, String category, int position, String type) {
         if (stands.containsKey(id)) return false;
 
-        int npcId = -1;
-        // Attempt Citizens creation if Citizens plugin is enabled
-        if (Bukkit.getPluginManager().isPluginEnabled("Citizens")) {
-            try {
-                net.citizensnpcs.api.CitizensAPI.getNPCRegistry();
-                net.citizensnpcs.api.npc.NPC npc = net.citizensnpcs.api.CitizensAPI.getNPCRegistry().createNPC(EntityType.PLAYER, TextUtil.colorize("&e[# " + position + "]"));
-                npc.spawn(location);
-                npcId = npc.getId();
-            } catch (Throwable t) {
-                plugin.getLogger().warning("Citizens found but failed to spawn NPC: " + t.getMessage());
-            }
+        LeaderboardStand stand = new LeaderboardStand(id, location, category, position, type, null, null, null, null);
+        // NPC through the configured NpcProvider (Citizens or LoveEssential); the stand works without one.
+        String provider = standNpcs.configuredProvider();
+        boolean updateSkin = plugin.getConfig().getBoolean("hall-of-fame.npc.update-skin", true);
+        String fallbackSkin = plugin.getConfig().getString("hall-of-fame.npc.fallback-skin", "Steve");
+        String npcKey = standNpcs.create(stand, TextUtil.parse("&e[# " + position + "]"), updateSkin ? fallbackSkin : null);
+        if (npcKey != null) {
+            stand.setNpc(npcKey, provider);
         }
-
-        LeaderboardStand stand = new LeaderboardStand(id, location, category, position, type, null, npcId, null);
         stands.put(id, stand);
-        
+
         updateStand(stand);
         saveStands();
         return true;
@@ -163,17 +203,7 @@ public class HallOfFameManager {
         LeaderboardStand stand = stands.remove(id);
         if (stand == null) return false;
 
-        // Remove Citizens NPC if present
-        if (stand.getNpcId() != -1 && Bukkit.getPluginManager().isPluginEnabled("Citizens")) {
-            try {
-                net.citizensnpcs.api.npc.NPC npc = net.citizensnpcs.api.CitizensAPI.getNPCRegistry().getById(stand.getNpcId());
-                if (npc != null) {
-                    npc.destroy();
-                }
-            } catch (Throwable t) {
-                plugin.getLogger().log(java.util.logging.Level.FINE, "Failed to destroy Citizens NPC for stand " + id, t);
-            }
-        }
+        standNpcs.remove(stand);
 
         // Remove Hologram text display if present
         if (stand.getHologramEntityUuid() != null) {
@@ -220,40 +250,21 @@ public class HallOfFameManager {
         String playerName = targetEntry != null && !targetEntry.entityId().equals("empty") ? targetEntry.entityName() : emptyPlayerName;
         double score = targetEntry != null ? targetEntry.score() : 0;
 
-        // 1. Update Citizens NPC skin and name if available
-        if (stand.getNpcId() != -1 && Bukkit.getPluginManager().isPluginEnabled("Citizens")) {
-            try {
-                net.citizensnpcs.api.npc.NPC npc = net.citizensnpcs.api.CitizensAPI.getNPCRegistry().getById(stand.getNpcId());
-                if (npc != null && npc.isSpawned()) {
-                    boolean updateSkin = plugin.getConfig().getBoolean("hall-of-fame.npc.update-skin", true);
-                    String fallbackSkin = plugin.getConfig().getString("hall-of-fame.npc.fallback-skin", "Steve");
-                    String emptyNpcName = plugin.getConfig().getString("hall-of-fame.npc.empty-name", "&7[Свободно]");
-                    String nameFormat = plugin.getConfig().getString("hall-of-fame.npc.name-format", "&e%player_name%");
+        // 1. Update the stand NPC's skin and name through its NpcProvider
+        if (stand.hasNpc()) {
+            boolean updateSkin = plugin.getConfig().getBoolean("hall-of-fame.npc.update-skin", true);
+            String fallbackSkin = plugin.getConfig().getString("hall-of-fame.npc.fallback-skin", "Steve");
+            String emptyNpcName = plugin.getConfig().getString("hall-of-fame.npc.empty-name", "&7[Свободно]");
+            String nameFormat = plugin.getConfig().getString("hall-of-fame.npc.name-format", "&e%player_name%");
+            boolean alltime = stand.getType().equals("alltime");
 
-                    if (!playerName.equals(emptyPlayerName) && targetEntry != null) {
-                        if (updateSkin) {
-                            net.citizensnpcs.trait.SkinTrait skinTrait = npc.getOrAddTrait(net.citizensnpcs.trait.SkinTrait.class);
-                            skinTrait.setSkinName(playerName, true);
-                        }
-                        if (stand.getType().equals("alltime")) {
-                            npc.setName(""); // Empty name for alltime
-                        } else {
-                            npc.setName(TextUtil.colorize(nameFormat.replace("%player_name%", playerName)));
-                        }
-                    } else {
-                        if (updateSkin) {
-                            net.citizensnpcs.trait.SkinTrait skinTrait = npc.getOrAddTrait(net.citizensnpcs.trait.SkinTrait.class);
-                            skinTrait.setSkinName(fallbackSkin, true);
-                        }
-                        if (stand.getType().equals("alltime")) {
-                            npc.setName("");
-                        } else {
-                            npc.setName(TextUtil.colorize(emptyNpcName));
-                        }
-                    }
-                }
-            } catch (Throwable t) {
-                plugin.getLogger().warning("Error updating Citizens NPC skin: " + t.getMessage());
+            if (!playerName.equals(emptyPlayerName) && targetEntry != null) {
+                // Empty name for alltime stands
+                Component name = alltime ? Component.empty() : TextUtil.parse(nameFormat.replace("%player_name%", playerName));
+                standNpcs.apply(stand, name, updateSkin ? playerName : null);
+            } else {
+                Component name = alltime ? Component.empty() : TextUtil.parse(emptyNpcName);
+                standNpcs.apply(stand, name, updateSkin ? fallbackSkin : null);
             }
         }
 
@@ -377,13 +388,17 @@ public class HallOfFameManager {
         textDisplay.setText(fullText);
     }
 
+    public StandNpcs getStandNpcs() {
+        return standNpcs;
+    }
+
     public LeaderboardStand getStandById(String id) {
         return stands.get(id);
     }
 
-    public LeaderboardStand getStandByNpcId(int npcId) {
+    public LeaderboardStand getStandByNpc(String providerId, String npcKey) {
         for (LeaderboardStand stand : stands.values()) {
-            if (stand.getNpcId() == npcId) {
+            if (stand.hasNpc() && stand.getNpcKey().equals(npcKey) && stand.getNpcProvider().equals(providerId)) {
                 return stand;
             }
         }

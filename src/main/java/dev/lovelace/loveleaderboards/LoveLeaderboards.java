@@ -84,7 +84,13 @@ public class LoveLeaderboards extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new GuiListener(), this);
         Bukkit.getPluginManager().registerEvents(new LeaderboardEventListener(this), this);
         Bukkit.getPluginManager().registerEvents(new StandInteractListener(this), this);
-        StandInteractListener.registerCitizensListener(this);
+        if (Bukkit.getPluginManager().getPlugin("LoveCore") != null) {
+            try {
+                Bukkit.getPluginManager().registerEvents(new dev.lovelace.loveleaderboards.listeners.StandNpcClickListener(this), this);
+            } catch (Throwable t) {
+                getLogger().warning("Не удалось подписаться на клики по NPC (LoveCore): " + t.getMessage());
+            }
+        }
 
         // 6. Integrations
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
@@ -202,6 +208,10 @@ public class LoveLeaderboards extends JavaPlugin {
 
     public RewardsManager getRewardsManager() {
         return rewardsManager;
+    }
+
+    public dev.lovelace.loveleaderboards.integrations.StandNpcs getStandNpcs() {
+        return hallOfFameManager.getStandNpcs();
     }
 
     public HallOfFameManager getHallOfFameManager() {
