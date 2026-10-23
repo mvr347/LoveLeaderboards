@@ -32,11 +32,20 @@ public final class StandNpcs {
 
     /** Currently configured provider id (re-read from config each time so /reload takes effect). */
     public String configuredProvider() {
-        String raw = plugin.getConfig().getString("integrations.npc-provider", NpcProviderChoice.DEFAULT);
+        String raw = plugin.getConfig().getString("integrations.npc-provider", NpcProviderChoice.GLOBAL);
         NpcProviderChoice.Result result = NpcProviderChoice.parse(raw);
         if (!result.recognized()) {
             warnOnce("bad-choice:" + raw, "integrations.npc-provider: неизвестное значение '" + raw
-                    + "' (допустимо citizens|loveessential), используется " + result.id() + ".");
+                    + "' (допустимо global|citizens|loveessential), используется " + result.id() + ".");
+        }
+        if (NpcProviderChoice.GLOBAL.equals(result.id())) {
+            // Follow integrations.provider of LoveCore; without LoveCore this is what the plugin always did.
+            try {
+                return dev.lovelace.lovecore.api.LoveCore.providerId(
+                        dev.lovelace.lovecore.api.provider.ProviderKind.NPC, NpcProviderChoice.GLOBAL);
+            } catch (LinkageError coreMissingOrOld) {
+                return NpcProviderChoice.DEFAULT;
+            }
         }
         return result.id();
     }

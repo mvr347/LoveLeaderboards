@@ -7,9 +7,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class NpcProviderChoiceTest {
 
     @Test
-    void defaultsToCitizensWhenUnset() {
-        assertEquals(new NpcProviderChoice.Result("citizens", true), NpcProviderChoice.parse(null));
-        assertEquals(new NpcProviderChoice.Result("citizens", true), NpcProviderChoice.parse("  "));
+    void followsTheGlobalChoiceWhenUnset() {
+        assertEquals(new NpcProviderChoice.Result("global", true), NpcProviderChoice.parse(null));
+        assertEquals(new NpcProviderChoice.Result("global", true), NpcProviderChoice.parse("  "));
+        assertEquals(new NpcProviderChoice.Result("global", true), NpcProviderChoice.parse(" GLOBAL "));
     }
 
     @Test
