@@ -111,7 +111,7 @@ public class RewardsManager {
         Bukkit.getScheduler().runTask(plugin, () -> {
             for (String cmd : commands) {
                 try {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), RewardCommands.render(cmd, name, score));
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), RewardCommands.withJsonText(RewardCommands.render(cmd, name, score)));
                 } catch (Exception e) {
                     plugin.getLogger().warning("Reward command failed (" + category + ", rank " + rank + "): '"
                             + cmd + "' - " + e.getMessage());
@@ -143,7 +143,8 @@ public class RewardsManager {
             for (String cmd : categoriesSec.getStringList(key)) {
                 if (RewardCommands.usesLegacyCodesInComponentCommand(cmd)) {
                     plugin.getLogger().warning("rewards.categories." + key + ": '" + cmd
-                            + "' uses '&' colour codes, but /title, /subtitle, /actionbar and /tellraw need a JSON text component.");
+                            + "' uses '&' colour codes, but /title, /subtitle, /actionbar and /tellraw need a JSON text component;"
+                            + " it is converted when the reward is given, replace it in config.yml with JSON to silence this.");
                 }
             }
         }

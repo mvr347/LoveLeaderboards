@@ -26,4 +26,27 @@ class RewardCommandsTest {
         assertFalse(RewardCommands.usesLegacyCodesInComponentCommand("broadcast &6Клан победил"));
         assertFalse(RewardCommands.usesLegacyCodesInComponentCommand("title Ada times 10 70 20"));
     }
+
+    @Test
+    void ampersandTitleBecomesAJsonComponent() {
+        assertEquals(
+                "title Ada title [{\"text\":\"\"},{\"text\":\"Мастер Охоты\",\"color\":\"gold\",\"bold\":true}]",
+                RewardCommands.withJsonText("title Ada title &6&lМастер Охоты"));
+        assertEquals(
+                "actionbar Ada [{\"text\":\"\"},{\"text\":\"Ура \",\"color\":\"green\"},{\"text\":\"клан\",\"color\":\"white\"}]",
+                RewardCommands.withJsonText("actionbar Ada &aУра &fклан"));
+    }
+
+    @Test
+    void jsonAndOtherCommandsAreLeftAlone() {
+        String json = "title Ada title {\"text\":\"Мастер\",\"color\":\"gold\"}";
+        assertEquals(json, RewardCommands.withJsonText(json));
+        assertEquals("broadcast &6Клан победил", RewardCommands.withJsonText("broadcast &6Клан победил"));
+        assertEquals("title Ada times 10 70 20", RewardCommands.withJsonText("title Ada times 10 70 20"));
+    }
+
+    @Test
+    void quotesInTheTextAreEscaped() {
+        assertTrue(RewardCommands.withJsonText("title Ada title &6Он сказал \"да\"").contains("\\\"да\\\""));
+    }
 }
