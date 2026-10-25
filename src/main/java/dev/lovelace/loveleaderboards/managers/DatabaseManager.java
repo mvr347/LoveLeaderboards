@@ -18,6 +18,7 @@ public class DatabaseManager {
     private final LoveLeaderboards plugin;
     private final Object dbLock = new Object();
     private Connection connection;
+    private final java.util.concurrent.atomic.AtomicBoolean clanApiWarned = new java.util.concurrent.atomic.AtomicBoolean();
 
     public DatabaseManager(LoveLeaderboards plugin) {
         this.plugin = plugin;
@@ -267,14 +268,16 @@ public class DatabaseManager {
             Object api = apiClass.getMethod("getInstance").invoke(null);
             
             if (entityId != null) {
+                UUID uuid = null;
                 try {
-                    UUID uuid = UUID.fromString(entityId);
+                    uuid = UUID.fromString(entityId);
+                } catch (IllegalArgumentException ignored) {
+                    // legacy row keyed by name or tag: checked below
+                }
+                if (uuid != null) {
+                    // A clan row is judged by its id alone: a new clan with the same name must not revive it.
                     Object clanOpt = apiClass.getMethod("getClanById", UUID.class).invoke(api, uuid);
-                    if (clanOpt instanceof Optional<?> opt && opt.isPresent()) {
-                        return true;
-                    }
-                } catch (Exception e) {
-                    plugin.getLogger().log(Level.FINE, "Failed to check clan by UUID " + entityId, e);
+                    return clanOpt instanceof Optional<?> opt && opt.isPresent();
                 }
             }
 
@@ -314,9 +317,49 @@ public class DatabaseManager {
 
             return false;
         } catch (Throwable t) {
-            plugin.getLogger().log(Level.FINE, "LoveClans API call failed, defaulting to active clan", t);
+            if (clanApiWarned.compareAndSet(false, true))
+                plugin.getLogger().log(Level.WARNING, "LoveClans API call failed, clans stay in the top until it works", t);
             return true;
         }
+    }
+
+    /**
+     * Ids of the clans that exist now, lower-case. Empty when LoveClans is absent or its API fails,
+     * so the caller never deletes on a failed lookup. Reads LoveClans' maps: main thread only.
+     */
+    public Optional<java.util.Set<String>> liveClanIds() {
+        if (!plugin.getServer().getPluginManager().isPluginEnabled("LoveClans")) return Optional.empty();
+        try {
+            Class<?> apiClass = Class.forName("me.lovelace.loveclans.api.LoveClansAPI");
+            Object api = apiClass.getMethod("getInstance").invoke(null);
+            Object clansObj = apiClass.getMethod("getAllClans").invoke(api);
+            if (!(clansObj instanceof Collection<?> clans)) return Optional.empty();
+            java.util.Set<String> ids = new java.util.HashSet<>();
+            for (Object clan : clans) {
+                Object id = clan.getClass().getMethod("id").invoke(clan);
+                if (id != null) ids.add(id.toString().toLowerCase(java.util.Locale.ROOT));
+            }
+            return Optional.of(ids);
+        } catch (Throwable t) {
+            plugin.getLogger().log(Level.FINE, "Could not list live clans", t);
+            return Optional.empty();
+        }
+    }
+
+    /** Distinct entity ids stored for clans. */
+    public List<String> clanEntityIds() {
+        List<String> ids = new ArrayList<>();
+        synchronized (dbLock) {
+            if (connection == null) return ids;
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT DISTINCT entity_id FROM leaderboard_entries WHERE entity_type = 'clan'");
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) ids.add(rs.getString(1));
+            } catch (SQLException e) {
+                plugin.getLogger().warning("Failed to list clan rows: " + e.getMessage());
+            }
+        }
+        return ids;
     }
 
     public int removeEntity(String entityType, String entityId) {
