@@ -91,8 +91,21 @@ public class StatBusIntegration implements Listener {
             eventClass.getMethod("getHandlerList");
             EventExecutor executor = (listener, event) -> onClanDisband(event);
             Bukkit.getPluginManager().registerEvent(eventClass, this, EventPriority.MONITOR, executor, plugin, true);
+            registerSweepOn("me.lovelace.loveclans.api.events.ClanMemberLeaveEvent", plugin);
         } catch (ReflectiveOperationException | ClassCastException e) {
             plugin.getLogger().log(Level.FINE, "LoveClans clan-disband bridge unavailable", e);
+        }
+    }
+
+    /** A clan whose last member leaves vanishes without a disband event: sweep after that event too. */
+    private void registerSweepOn(String className, LoveLeaderboards plugin) {
+        try {
+            Class<? extends Event> eventClass = Class.forName(className).asSubclass(Event.class);
+            eventClass.getMethod("getHandlerList");
+            EventExecutor executor = (listener, event) -> plugin.getLeaderboardManager().sweepOrphanClansSoon();
+            Bukkit.getPluginManager().registerEvent(eventClass, this, EventPriority.MONITOR, executor, plugin, true);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            plugin.getLogger().log(Level.FINE, "Sweep trigger " + className + " unavailable", e);
         }
     }
 
@@ -126,6 +139,7 @@ public class StatBusIntegration implements Listener {
 
             if (clanId != null || clanName != null) {
                 plugin.getLeaderboardManager().removeClan(clanId, clanName);
+                plugin.getLeaderboardManager().sweepOrphanClansSoon();
             }
         } catch (Throwable t) {
             plugin.getLogger().log(Level.FINE, "Clan disband reflection handler failed", t);

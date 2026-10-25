@@ -120,6 +120,10 @@ public class LoveLeaderboards extends JavaPlugin {
         long refreshTicks = Math.max(20L, Math.min(cacheTtl / 2, 10_000L) / 50L);
         Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> leaderboardManager.refreshHotTops(), refreshTicks, refreshTicks);
 
+        // Rows of clans that vanished without a disband event are removed here, at start and on a timer.
+        long sweepTicks = Math.max(1L, getConfig().getLong("cleanup.interval-minutes", 5L)) * 60L * 20L;
+        Bukkit.getScheduler().runTaskTimer(this, () -> leaderboardManager.sweepOrphanClans(), 100L, sweepTicks);
+
         // 7. Monthly Reset Task
         startMonthlyTask();
 

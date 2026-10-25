@@ -154,6 +154,39 @@ public class LeaderboardManager {
         }
     }
 
+    private final java.util.concurrent.atomic.AtomicBoolean sweepQueued = new java.util.concurrent.atomic.AtomicBoolean();
+
+    /**
+     * Deletes the rows of clans that no longer exist. LoveClans drops a clan without a disband event
+     * when its last member leaves, so listening to the event alone leaves such clans in the top.
+     * Called on the main thread (reads LoveClans); the delete itself runs async. Does nothing when the
+     * live list is unavailable or empty, so a clan plugin that has not loaded its data yet cannot
+     * trigger a mass delete.
+     */
+    public void sweepOrphanClans() {
+        var live = databaseManager.liveClanIds();
+        if (live.isEmpty() || live.get().isEmpty()) return;
+        java.util.Set<String> ids = live.get();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            var orphans = dev.lovelace.loveleaderboards.managers.ClanLiveness.orphans(databaseManager.clanEntityIds(), ids);
+            int removed = 0;
+            for (String id : orphans) removed += databaseManager.removeEntity("clan", id);
+            if (removed > 0) {
+                invalidateAllCaches();
+                plugin.getLogger().info("Удалено строк несуществующих кланов из топа: " + removed);
+            }
+        });
+    }
+
+    /** Sweeps shortly after a clan change, once however many events arrive together. */
+    public void sweepOrphanClansSoon() {
+        if (!sweepQueued.compareAndSet(false, true)) return;
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            sweepQueued.set(false);
+            sweepOrphanClans();
+        }, 40L);
+    }
+
     public void ensurePlayerExists(UUID uuid, String playerName) {
         if (!Bukkit.isPrimaryThread()) {
             for (dev.lovelace.loveleaderboards.models.Category cat : categoryManager.getAllCategories()) {
