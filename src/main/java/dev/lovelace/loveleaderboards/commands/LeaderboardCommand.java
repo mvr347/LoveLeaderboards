@@ -28,7 +28,12 @@ public class LeaderboardCommand implements TabExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Only players can use this command.");
+            // Help needs no player, so console may read it; everything else opens a GUI.
+            if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
+                sendHelp(sender);
+            } else {
+                sender.sendMessage(TextUtil.parse(plugin.getConfig().getString("messages.only-players", "&cКоманда доступна только игрокам.")));
+            }
             return true;
         }
 
@@ -81,18 +86,16 @@ public class LeaderboardCommand implements TabExecutor {
      * Единый формат списка команд (шапка/тело/подвал), в том же стиле, что и
      * {@code /loveleaderboardsadmin} и справка других плагинов Love*-экосистемы.
      */
-    private void sendHelp(Player player) {
-        player.sendMessage(TextUtil.parse("&6==========================================="));
-        player.sendMessage(TextUtil.parse("&6★ &lLoveLeaderboards &6★"));
-        player.sendMessage(TextUtil.parse("&e/leaderboard &7- Открыть главное меню лидербордов"));
-        player.sendMessage(TextUtil.parse("&e/leaderboard <категория> &7- Открыть топ по категории"));
-        player.sendMessage(TextUtil.parse("&e/leaderboard compare <игрок> &7- Сравнить статистику с игроком"));
-        player.sendMessage(TextUtil.parse("&e/leaderboard help &7- Показать это меню"));
+    private void sendHelp(CommandSender player) {
+        player.sendMessage(TextUtil.helpHeader("LoveLeaderboards Помощь"));
+        player.sendMessage(TextUtil.helpLine("/leaderboard", "Открыть главное меню лидербордов"));
+        player.sendMessage(TextUtil.helpLine("/leaderboard <категория>", "Открыть топ по категории"));
+        player.sendMessage(TextUtil.helpLine("/leaderboard compare <игрок>", "Сравнить статистику с игроком"));
+        player.sendMessage(TextUtil.helpLine("/leaderboard help", "Показать эту справку"));
         if (player.hasPermission("loveleaderboards.admin")) {
-            player.sendMessage(TextUtil.parse("&e/loveleaderboardsadmin &7- Команды администратора"));
+            player.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin", "Команды администратора"));
         }
-        player.sendMessage(TextUtil.parse("&7Алиасы: &f/lb, /top, /loveleaderboards, /топ"));
-        player.sendMessage(TextUtil.parse("&6==========================================="));
+        player.sendMessage(TextUtil.helpFooter());
     }
 
     @Override

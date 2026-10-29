@@ -37,8 +37,8 @@ public class LoveLeaderboardsAdminCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        // Silent on purpose: a command the sender cannot use is simply not theirs.
         if (!sender.hasPermission("loveleaderboards.admin")) {
-            sender.sendMessage(TextUtil.parse(plugin.getConfig().getString("messages.no-permission", "&cУ вас нет прав!")));
             return true;
         }
 
@@ -345,32 +345,30 @@ public class LoveLeaderboardsAdminCommand implements TabExecutor {
     }
 
     private void sendHelp(CommandSender sender) {
-        sender.sendMessage("§6===========================================");
-        sender.sendMessage("§6★ §lLoveLeaderboards Admin Commands §6★");
-        sender.sendMessage("§e/loveleaderboardsadmin createstand <alltime|temporary|all> <категория> [место] §7- Создать NPC/стенд");
-        sender.sendMessage("§e/loveleaderboardsadmin stand list §7- Посмотреть список созданных стендов");
-        sender.sendMessage("§e/loveleaderboardsadmin stand remove <id> §7- Удалить стенд");
-        sender.sendMessage("§e/loveleaderboardsadmin stand tp <id> §7- Телепортироваться к стенду");
-        sender.sendMessage("§e/loveleaderboardsadmin stand info <id> §7- Подробная информация о стенде");
-        sender.sendMessage("§e/loveleaderboardsadmin add <player|clan> <ник/id> <категория> <кол-во> §7- Добавить очки");
-        sender.sendMessage("§e/loveleaderboardsadmin set <player|clan> <ник/id> <категория> <счет> §7- Установить очки");
-        sender.sendMessage("§e/loveleaderboardsadmin reset-monthly §7- Сбросить месячные топы");
-        sender.sendMessage("§e/loveleaderboardsadmin give-rewards §7- Выдать ежемесячные награды");
-        sender.sendMessage("§e/loveleaderboardsadmin cache-clear §7- Очистить кэш в памяти");
-        sender.sendMessage("§e/loveleaderboardsadmin reload §7- Перезагрузить конфиг и стенды");
-        sender.sendMessage("§6===========================================");
+        sender.sendMessage(TextUtil.helpHeader("LoveLeaderboards Admin Помощь"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin createstand <alltime|temporary|all> <категория> [место]", "Создать NPC/стенд"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand list", "Посмотреть список созданных стендов"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand remove <id>", "Удалить стенд"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand tp <id>", "Телепортироваться к стенду"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand info <id>", "Подробная информация о стенде"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin add <player|clan> <ник/id> <категория> <кол-во>", "Добавить очки"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin set <player|clan> <ник/id> <категория> <счет>", "Установить очки"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin reset-monthly", "Сбросить месячные топы"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin give-rewards", "Выдать ежемесячные награды"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin cache-clear", "Очистить кэш в памяти"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin reload", "Перезагрузить конфиг и стенды"));
+        sender.sendMessage(TextUtil.helpFooter());
     }
 
     private void sendStandHelp(CommandSender sender) {
-        sender.sendMessage("§6===========================================");
-        sender.sendMessage("§6★ Управление стендами Зала Славы (/loveleaderboardsadmin stand) ★");
-        sender.sendMessage("§e/loveleaderboardsadmin createstand <alltime|temporary|all> <категория> [позиция] §7- Создать стенд (на вашей позиции)");
-        sender.sendMessage("§e/loveleaderboardsadmin stand list §7- Список всех стендов");
-        sender.sendMessage("§e/loveleaderboardsadmin stand info <id> §7- Информация о стенде");
-        sender.sendMessage("§e/loveleaderboardsadmin stand tp <id> §7- Телепорт к стенду");
-        sender.sendMessage("§e/loveleaderboardsadmin stand remove <id> §7- Удалить стенд");
-        sender.sendMessage("§e/loveleaderboardsadmin stand reload §7- Обновить визуалы стендов");
-        sender.sendMessage("§6===========================================");
+        sender.sendMessage(TextUtil.helpHeader("LoveLeaderboards Стенды Помощь"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin createstand <alltime|temporary|all> <категория> [позиция]", "Создать стенд (на вашей позиции)"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand list", "Список всех стендов"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand info <id>", "Информация о стенде"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand tp <id>", "Телепорт к стенду"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand remove <id>", "Удалить стенд"));
+        sender.sendMessage(TextUtil.helpLine("/loveleaderboardsadmin stand reload", "Обновить визуалы стендов"));
+        sender.sendMessage(TextUtil.helpFooter());
     }
 
     @Override
