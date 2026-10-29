@@ -13,13 +13,16 @@ commands:
     description: Open the main leaderboard GUI
     aliases: [ lb, top, loveleaderboards, топ ]
     permission: loveleaderboards.use
+    permission-message: ""
   loveleaderboardsadmin:
     description: Admin commands for LoveLeaderboards
     permission: loveleaderboards.admin
+    permission-message: ""
   leaderboardadmin:
     description: "[Устарело] Используйте /loveleaderboardsadmin"
     aliases: [ lba, lbadmin ]
     permission: loveleaderboards.admin
+    permission-message: ""
 
 permissions:
   loveleaderboards.use:

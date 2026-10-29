@@ -1,6 +1,7 @@
 package dev.lovelace.loveleaderboards.utils;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
@@ -27,6 +28,23 @@ public class TextUtil {
         return LEGACY_SERIALIZER.deserialize(text);
     }
     
+    /** Standard help header: {@code ========== Title ==========}. */
+    public static Component helpHeader(String title) {
+        return Component.text("========== ", NamedTextColor.DARK_GRAY)
+                .append(Component.text(title, NamedTextColor.AQUA))
+                .append(Component.text(" ==========", NamedTextColor.DARK_GRAY));
+    }
+
+    /** Standard help line; the command is plain text, so {@code <arg>} placeholders are never parsed as tags. */
+    public static Component helpLine(String command, String description) {
+        return Component.text(command, NamedTextColor.AQUA)
+                .append(Component.text(" - " + description, NamedTextColor.GRAY));
+    }
+
+    public static Component helpFooter() {
+        return Component.text("=========================================", NamedTextColor.DARK_GRAY);
+    }
+
     public static String colorize(String text) {
         if (text == null) return "";
         return text.replace("&", "§");

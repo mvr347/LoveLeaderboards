@@ -25,7 +25,6 @@ public class LeaderboardAdminRedirectCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("loveleaderboards.admin")) {
-            sender.sendMessage(TextUtil.parse(plugin.getConfig().getString("messages.no-permission", "&cУ вас нет прав!")));
             return true;
         }
 
