@@ -1,0 +1,7 @@
+# Однократное обновление оформления; исходные файлы сохраняются рядом как .pre-style-20261101.bak.
+version: 20261101
+updates:
+- file: heads.yml
+  path: special.empty-slot
+  before: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjg4ODk0MjdlZWM2YTBlN2I1MDU2NjQxNWE4YjMxN2JkY2RmY2ZkYjU5MTEwYzc2ZTgwYWEyZTYzNGZmNTAyOCJ9fX0="
+  value: eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNGQzNTlkYTRmNzBmMWJjYmU4MTU0NWZjM2E5N2I2NWMxZDcwZjNmOTAxOThkNzU3ODQ1YWFiMTk4YjZlMDA1OSJ9fX0=
