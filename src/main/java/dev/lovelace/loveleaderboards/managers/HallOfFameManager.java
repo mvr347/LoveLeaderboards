@@ -132,7 +132,7 @@ public class HallOfFameManager {
             }
         }
         writeStandsFile(standsConfig.saveToString());
-        plugin.getLogger().info("stands.yml: числовые npc-id мигрированы в npc-key (провайдер citizens).");
+        plugin.getLogger().info("stands.yml: числовые npc-id мигрированы в npc-key (провайдер loveessential).");
     }
 
     /** Saves stands.yml: snapshot is serialized on the calling (main) thread, the disk write goes async. */
@@ -184,7 +184,7 @@ public class HallOfFameManager {
         if (stands.containsKey(id)) return false;
 
         LeaderboardStand stand = new LeaderboardStand(id, location, category, position, type, null, null, null, null);
-        // NPC through the configured NpcProvider (Citizens or LoveEssential); the stand works without one.
+        // NPC through the LoveEssential NpcProvider; the stand works without one.
         String provider = standNpcs.configuredProvider();
         boolean updateSkin = plugin.getConfig().getBoolean("hall-of-fame.npc.update-skin", true);
         String fallbackSkin = plugin.getConfig().getString("hall-of-fame.npc.fallback-skin", "Steve");

@@ -78,16 +78,11 @@ integrations:
   placeholder-api:
     enabled: true
     cache-time: 30  # секунды
-  # 2026-10-22: NPC стендов создаются через контракт NpcProvider из LoveCore, а не прямыми вызовами Citizens.
-  # citizens — NPC Citizens (нужен установленный Citizens, он подключается через LoveCore).
-  # loveessential — собственные NPC LoveEssential. Смена значения НЕ переносит уже созданные NPC: стенд помнит
-  # провайдера, который его создал, и пока выбран другой, его NPC не обновляется (пересоздайте стенд).
-  # global — как решено в integrations.provider в config.yml LoveCore (external - Citizens, loveessential -
-  # LoveEssential): один выбор сразу для всех плагинов. 2026-10-23: теперь по умолчанию; пока в ядре стоит
-  # external, поведение прежнее (на текущем сервере стенды уже стоят на Citizens). Явное citizens или
-  # loveessential перекрывает общий выбор; уже сохранённое на сервере `citizens` остаётся явным: чтобы
-  # следовать ядру, замените его на `global`.
-  npc-provider: global
+  # 2026-11-21: ключ npc-provider удалён. NPC стендов теперь поставляет только LoveEssential через контракт
+  # NpcProvider из LoveCore; Citizens и другие провайдеры не поддерживаются, выбирать больше не из чего.
+  # Оставленный на сервере ключ integrations.npc-provider игнорируется (одно предупреждение в логе). Поле
+  # npc-provider внутри stands.yml тоже игнорируется: у всех стендов провайдер loveessential, а числовой npc-key
+  # LoveEssential читает как видимый номер NPC.
   vesuvio:
     enabled: true
     hide-suspects: true

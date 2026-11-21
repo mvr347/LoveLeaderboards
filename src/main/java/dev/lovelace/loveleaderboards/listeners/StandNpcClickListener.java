@@ -11,7 +11,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 
 /**
- * Right-click on a stand NPC from any NpcProvider. LoveCore fires the event for every provider, so clicks from
+ * Right-click on a stand NPC. LoveCore fires the event for every provider, so clicks from
  * a provider other than the configured one are ignored. Registered only when LoveCore is present.
  */
 public class StandNpcClickListener implements Listener {
