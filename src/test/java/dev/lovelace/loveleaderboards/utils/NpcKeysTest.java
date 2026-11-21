@@ -80,4 +80,12 @@ class NpcKeysTest {
         stand.setNpc(null, "citizens");
         assertNull(stand.getNpcProvider());
     }
+
+    @Test
+    void foreignProviderIsReportedOnlyForNonLoveEssentialKeys() throws Exception {
+        assertEquals("citizens", NpcKeys.foreignProvider(stand("npc-key: \"5\"\nnpc-provider: citizens")));
+        assertNull(NpcKeys.foreignProvider(stand("npc-key: \"5\"\nnpc-provider: LoveEssential")));
+        assertNull(NpcKeys.foreignProvider(stand("npc-key: \"5\"")));
+        assertNull(NpcKeys.foreignProvider(stand("npc-provider: citizens")));
+    }
 }

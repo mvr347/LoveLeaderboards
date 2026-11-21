@@ -39,6 +39,21 @@ public final class NpcKeys {
         return text;
     }
 
+    /**
+     * The provider stored for the stand when it is not LoveEssential (for example the old "citizens"), else null.
+     * Such a key is still read as a LoveEssential key, so the caller warns the admin to verify the binding.
+     */
+    public static String foreignProvider(ConfigurationSection stand) {
+        if (stand == null || normalize(stand.get("npc-key")) == null) {
+            return null;
+        }
+        String stored = stand.getString("npc-provider", "");
+        if (stored == null || stored.isBlank() || stored.trim().equalsIgnoreCase(PROVIDER)) {
+            return null;
+        }
+        return stored.trim();
+    }
+
     public static Stored read(ConfigurationSection stand) {
         String key = normalize(stand.get("npc-key"));
         if (key != null) {

@@ -65,6 +65,12 @@ public class HallOfFameManager {
                 if (npc.migrated()) {
                     migratedNpcKeys = true;
                 }
+                String foreign = NpcKeys.foreignProvider(section.getConfigurationSection(key));
+                if (foreign != null) {
+                    plugin.getLogger().warning("Stand '" + key + "' was bound under provider '" + foreign
+                            + "'; its key '" + npc.key() + "' is now read as a LoveEssential NPC number. "
+                            + "Check that this NPC exists in LoveEssential, or re-bind the stand.");
+                }
                 String holoUuidStr = section.getString(key + ".hologram-uuid", null);
                 UUID holoUuid = null;
                 if (holoUuidStr != null) {
