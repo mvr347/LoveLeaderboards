@@ -16,15 +16,15 @@ class NpcKeysTest {
     }
 
     @Test
-    void legacyNumericIdBecomesCitizensKey() throws Exception {
+    void legacyNumericIdBecomesLoveEssentialKey() throws Exception {
         NpcKeys.Stored stored = NpcKeys.read(stand("npc-id: 42"));
         assertEquals("42", stored.key());
-        assertEquals("citizens", stored.provider());
+        assertEquals("loveessential", stored.provider());
         assertTrue(stored.migrated());
     }
 
     @Test
-    void citizensIdZeroIsARealId() throws Exception {
+    void idZeroIsARealId() throws Exception {
         NpcKeys.Stored stored = NpcKeys.read(stand("npc-id: 0"));
         assertTrue(stored.present());
         assertEquals("0", stored.key());
@@ -58,8 +58,10 @@ class NpcKeysTest {
     }
 
     @Test
-    void newKeyWithoutProviderDefaultsToCitizens() throws Exception {
-        assertEquals("citizens", NpcKeys.read(stand("npc-key: \"5\"")).provider());
+    void storedProviderIsIgnoredAndEveryNpcIsLoveEssential() throws Exception {
+        assertEquals("loveessential", NpcKeys.read(stand("npc-key: \"5\"")).provider());
+        assertEquals("loveessential", NpcKeys.read(stand("npc-key: \"5\"\nnpc-provider: citizens")).provider(),
+                "stands created under Citizens keep working: LoveEssential resolves the number");
     }
 
     @Test
@@ -77,5 +79,13 @@ class NpcKeysTest {
         assertTrue(stand.hasNpc());
         stand.setNpc(null, "citizens");
         assertNull(stand.getNpcProvider());
+    }
+
+    @Test
+    void foreignProviderIsReportedOnlyForNonLoveEssentialKeys() throws Exception {
+        assertEquals("citizens", NpcKeys.foreignProvider(stand("npc-key: \"5\"\nnpc-provider: citizens")));
+        assertNull(NpcKeys.foreignProvider(stand("npc-key: \"5\"\nnpc-provider: LoveEssential")));
+        assertNull(NpcKeys.foreignProvider(stand("npc-key: \"5\"")));
+        assertNull(NpcKeys.foreignProvider(stand("npc-provider: citizens")));
     }
 }

@@ -2,6 +2,7 @@ package dev.lovelace.loveleaderboards.integrations;
 
 import dev.lovelace.loveleaderboards.LoveLeaderboards;
 import dev.lovelace.loveleaderboards.models.LeaderboardStand;
+import dev.lovelace.loveleaderboards.utils.NpcKeys;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -12,8 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
- * Stand NPCs through LoveCore's {@code NpcProvider} contract (Citizens or LoveEssential, chosen by
- * {@code integrations.npc-provider}). Every LoveCore class reference lives in {@link Bridge}, so a missing
+ * Stand NPCs through LoveCore's {@code NpcProvider} contract (LoveEssential only; 2026-11-21: the provider
+ * switch was removed). Every LoveCore class reference lives in {@link Bridge}, so a missing
  * LoveCore only ever shows up as a caught error and a single warning: the stand then just has no NPC.
  *
  * <p>The provider is resolved on every call and never cached, because providers register late.</p>
@@ -30,24 +31,25 @@ public final class StandNpcs {
         this.plugin = plugin;
     }
 
-    /** Currently configured provider id (re-read from config each time so /reload takes effect). */
+    /** Leftover key of the removed provider switch: read only to report that its value is ignored. */
+    static final String LEGACY_PROVIDER_PATH = "integrations.npc-provider";
+
+    /** The leftover value that is ignored, or null when it is absent, blank, {@code global} or {@code loveessential}. */
+    static String ignoredProviderValue(String raw) {
+        if (raw == null) return null;
+        String value = raw.trim();
+        if (value.isEmpty() || value.equalsIgnoreCase("global") || value.equalsIgnoreCase(NpcKeys.PROVIDER)) return null;
+        return value;
+    }
+
+    /** The provider id: always LoveEssential. A leftover config value warns once and is ignored. */
     public String configuredProvider() {
-        String raw = plugin.getConfig().getString("integrations.npc-provider", NpcProviderChoice.GLOBAL);
-        NpcProviderChoice.Result result = NpcProviderChoice.parse(raw);
-        if (!result.recognized()) {
-            warnOnce("bad-choice:" + raw, "integrations.npc-provider: неизвестное значение '" + raw
-                    + "' (допустимо global|citizens|loveessential), используется " + result.id() + ".");
+        String ignored = ignoredProviderValue(plugin.getConfig().getString(LEGACY_PROVIDER_PATH, null));
+        if (ignored != null) {
+            warnOnce("ignored-choice:" + ignored, LEGACY_PROVIDER_PATH + ": значение '" + ignored
+                    + "' игнорируется, NPC берутся только из LoveEssential; удалите ключ из config.yml.");
         }
-        if (NpcProviderChoice.GLOBAL.equals(result.id())) {
-            // Follow integrations.provider of LoveCore; without LoveCore this is what the plugin always did.
-            try {
-                return dev.lovelace.lovecore.api.LoveCore.providerId(
-                        dev.lovelace.lovecore.api.provider.ProviderKind.NPC, NpcProviderChoice.GLOBAL);
-            } catch (LinkageError coreMissingOrOld) {
-                return NpcProviderChoice.DEFAULT;
-            }
-        }
-        return result.id();
+        return NpcKeys.PROVIDER;
     }
 
     /** Creates the NPC for a new stand through the configured provider; returns its key or null if unavailable. */
@@ -101,22 +103,9 @@ public final class StandNpcs {
         }
     }
 
-    /** True if the stand has an NPC and it belongs to the configured provider (others are ignored on purpose). */
+    /** True if the stand has an NPC and LoveCore is there to manage it. */
     private boolean manageable(LeaderboardStand stand) {
-        if (!stand.hasNpc()) {
-            return false;
-        }
-        String configured = configuredProvider();
-        if (!configured.equals(stand.getNpcProvider())) {
-            warnOnce("mismatch:" + stand.getId() + ":" + configured, "Стенд '" + stand.getId() + "' создан через "
-                    + stand.getNpcProvider() + ", а в config.yml выбран " + configured
-                    + " — NPC этого стенда не обновляется. Пересоздайте стенд или верните прежний провайдер.");
-            return false;
-        }
-        if (!loveCorePresent()) {
-            return false;
-        }
-        return true;
+        return stand.hasNpc() && loveCorePresent();
     }
 
     private boolean loveCorePresent() {
@@ -128,9 +117,8 @@ public final class StandNpcs {
     }
 
     static String missingProviderMessage(String providerId) {
-        return "NPC-провайдер '" + providerId + "' не зарегистрирован в LoveCore (не установлен "
-                + (NpcProviderChoice.CITIZENS.equals(providerId) ? "Citizens" : "LoveEssential")
-                + "?) — NPC стендов отключены.";
+        return "NPC-провайдер '" + providerId + "' не зарегистрирован в LoveCore (не установлен LoveEssential?) — "
+                + "NPC стендов отключены.";
     }
 
     private void warnOnce(String key, String message) {

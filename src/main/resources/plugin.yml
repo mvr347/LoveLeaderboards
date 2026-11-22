@@ -6,7 +6,7 @@ authors: [ "Antigravity" ]
 description: Advanced leaderboards plugin for Love ecosystem.
 
 depend: [LoveCore, LoveEssential]
-softdepend: [PlaceholderAPI, LoveHunt, LoveClans, Citizens, Vesuvio]
+softdepend: [PlaceholderAPI, LoveHunt, LoveClans, Vesuvio]
 
 commands:
   leaderboard:
